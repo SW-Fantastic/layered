@@ -4,6 +4,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "Layered",
   description: "Native library runtime",
+  base: '/layered/',
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
