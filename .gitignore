@@ -6,6 +6,7 @@
 /out/
 /docs/node_modules/
 /docs/src/.vitepress/cache/
+/docs/src/.vitepress/dist/
 /layered-runtime/src/main/resources/org/swdc/layered/module/linux-x86/*.so
 /layered-runtime/src/main/resources/org/swdc/layered/module/windows-x86_64/*.dll
 
