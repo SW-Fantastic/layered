@@ -1,0 +1,16 @@
+[{
+  "name": "ffi",
+  "fileName": "ffi-8.dll",
+  "vmLoad": true,
+  "dep": []
+}, {
+  "name": "jemalloc",
+  "fileName": "jemalloc.dll",
+  "vmLoad": true,
+  "dep": []
+},{
+  "name": "layer",
+  "fileName": "liblayer.dll",
+  "vmLoad": true,
+  "dep": [ "jemalloc","ffi" ]
+}]

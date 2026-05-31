@@ -1,0 +1,15 @@
+/layered-runtime/native/build/
+/layered-runtime/native/vcpkg/
+/layered-parser/target/
+/layered-runtime/target/
+/layered-plugin/target/
+/out/
+/docs/node_modules/
+/docs/src/.vitepress/cache/
+/layered-runtime/src/main/resources/org/swdc/layered/module/linux-x86/*.so
+/layered-runtime/src/main/resources/org/swdc/layered/module/windows-x86_64/*.dll
+
+/assets/
+.idea
+.workbuddy
+/layered-runtime/assets/
