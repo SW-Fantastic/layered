@@ -1,0 +1,9 @@
+{
+  "name": "liblayer",
+  "version": "0.1.0",
+  "dependencies": [
+    "pkgconf",
+    "libffi",
+    "jemalloc"
+  ]
+}

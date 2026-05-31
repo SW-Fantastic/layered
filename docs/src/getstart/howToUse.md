@@ -243,7 +243,11 @@ public interface PdfiumDocs {
 直接使用Java的基本类型，基本类型的指针是`SeekablePointer`的子类，至于String则可以对应到字符型的指针。
 
 需要注意的是，虽然Java没有unsigned类型，但是为了兼容性，metadata是会记载哪些是无符号类型的，
-因此如果参数或者返回值是无符号的，需要使用TypeDecl注解并且指定unsigned为true。
+因此如果参数或者返回值是无符号的，需要使用`@Unsigned`注解标注之。
+
+此外，部分指针存在转换问题，例如`Void*`根据需要，部分情况下有必要被视为BytePointer，这种情况下可以
+使用`@Cast`注解，通过`@Cast(OpaquePointer.class)`就能以把它解析为`Void*`但是作为`BytePointer`
+来使用。
 
 此外，对于本地对象的Getter和Setter和构造以及删除，这里有单独的注解提供，SymbolFactory注解
 用于构造函数和析构函数，通过指定creator和deleteor区分，value是本地对象的名字，SymbolAccessor
