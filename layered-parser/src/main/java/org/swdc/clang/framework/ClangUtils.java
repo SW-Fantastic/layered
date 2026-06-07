@@ -38,9 +38,14 @@ public class ClangUtils {
      */
     public static String readString(CXString string) {
         try {
+            if (string == null ||string.isNull()) {
+                return null;
+            }
             return asString(string);
         } finally {
-            ClangIO.clang_disposeString(string);
+            if (string != null && !string.isNull()) {
+                ClangIO.clang_disposeString(string);
+            }
         }
     }
 
@@ -71,6 +76,17 @@ public class ClangUtils {
         return LibClang.clang_isConstQualifiedType(type) == 1;
     }
 
+    private static boolean isPlatformDependentType(CXType type) {
+        String name = readString(LibClang.clang_getTypeSpelling(type));
+        if (name != null && !name.isBlank()) {
+            name = name.toLowerCase();
+            return name.equals("size_t") ||
+                    name.equals("time_t") ||
+                    name.equals("ssize_t");
+        }
+        return false;
+    }
+
     /**
      * 解析原始类型，不穿透指针。
      * @param type CXType对象。
@@ -80,6 +96,11 @@ public class ClangUtils {
         while (type.kind() == LibClang.CXType_Typedef || type.kind() == LibClang.CXType_Elaborated) {
             // 解掉typedef类型，获取实际的类型
             if (type.kind() == LibClang.CXType_Typedef) {
+
+                if (isPlatformDependentType(type)) {
+                    return type;
+                }
+
                 CXCursor cursor = LibClang.clang_getTypeDeclaration(type);
                 type = LibClang.clang_getTypedefDeclUnderlyingType(cursor);
             } else if (type.kind() == LibClang.CXType_Elaborated) {
@@ -99,9 +120,9 @@ public class ClangUtils {
      */
     public static CXType getRealType(CXType type, boolean keepName) {
 
-        if (isPrimaryType(type)) {
+        /*if (isPrimaryType(type) && !isPlatformDependentType(type)) {
             return LibClang.clang_getCanonicalType(type);
-        }
+        }*/
 
         List<Integer> aliasKind = Arrays.asList(
                 LibClang.CXType_Typedef,
@@ -117,6 +138,9 @@ public class ClangUtils {
             } else if (type.kind() == LibClang.CXType_Elaborated ) {
                 type = LibClang.clang_Type_getNamedType(type);
             } else {
+                if (isPlatformDependentType(type)) {
+                    return type;
+                }
                 CXCursor cursor = LibClang.clang_getTypeDeclaration(type);
                 if (keepName && LibClang.clang_Cursor_isAnonymous(cursor) == 1) {
                     // 内层的类型是匿名的，它只有一个typedef名称，不要继续解构它
@@ -154,11 +178,15 @@ public class ClangUtils {
         CXType realType = getRealType(type,true);
         String prefix = getFullQualifiedPrefix(realType);
         String name = readString(LibClang.clang_getTypeSpelling(type));
-        if (name.contains("std") || prefix.contains("std")) {
-            return (qualified && !prefix.isBlank() ? prefix + "::" : "")  + name;
+        if (name == null) {
+            name = "";
+        }
+        String fullPrefix = qualified && !prefix.isBlank() ? prefix + "::" : "";
+        if (name.contains("std") || fullPrefix.contains("std")) {
+            return fullPrefix + name;
         } else {
             name = readString(LibClang.clang_getTypeSpelling(realType));
-            return (qualified && !prefix.isBlank() ? prefix + "::" : "") + name;
+            return fullPrefix + name;
         }
     }
 
@@ -208,12 +236,6 @@ public class ClangUtils {
                 }
                 qualifiedPrefix.insert(0, parentName);
             }
-            /*if (qualifiedPrefix.toString().isBlank()) {
-                break;
-            } else {
-                qualifiedPrefix.insert(0, parentName + "::");
-            } */
-            // 继续向上查找父作用域
             parent = LibClang.clang_getCursorSemanticParent(parent);
         }
 

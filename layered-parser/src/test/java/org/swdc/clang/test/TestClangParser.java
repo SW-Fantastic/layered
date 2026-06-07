@@ -19,8 +19,9 @@ import java.util.Arrays;
 public class TestClangParser {
 
     public static void main(String[] args) {
+        // testWithZlib();
          testwithComplexC();
-         //testwithSimpleC();
+        // testwithSimpleC();
         // testWtihVeryComplexC();
     }
 
@@ -82,6 +83,49 @@ public class TestClangParser {
             projectWriter.addLibraryHeader(new File("assets/pdfium/include"));
             projectWriter.addLibrary("pdfium", new File("assets/pdfium/dll"));
             projectWriter.linkLibrary("pdfium");
+            projectWriter.createProject();
+
+            SourceGenerate generate = new SourceGenerate();
+            for (File file : parser.getHeaders()) {
+
+                ClangContext context = parser.getContext(file);
+                SourceContext sourceContext = generate.createContext();
+                StructSourceWriter writer = new StructSourceWriter();
+                for (NativeStructType struct : context.getDeclaredStructs()) {
+                    writer.createCalls(sourceContext,struct);
+                }
+
+                FunctionSourceWriter functionWriter = new FunctionSourceWriter();
+                for (NativeFunction function : context.getDeclaredFunctions()) {
+                    functionWriter.createCalls(sourceContext,function);
+                }
+                projectWriter.writeSource(file, sourceContext);
+
+            }
+
+            projectWriter.writeEntryPoint();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private static void testWithZlib() {
+
+        File targetHeader = new File("assets/zlib/include/zlib.h");
+
+        CLangParser parser = new CLangParser(Arrays.asList("-v"), Arrays.asList(
+                new File("assets/zlib/include")
+        )).addHeader(targetHeader);
+        parser.parse();
+
+        try {
+
+            NativeProjectWriter projectWriter = new NativeProjectWriter("zlib", new File("out/zlib"));
+            projectWriter.addLibraryHeader(new File("assets/zlib/include"));
+            projectWriter.addLibrary("zlib", new File("assets/zlib/dll"));
+            projectWriter.linkLibrary("z");
             projectWriter.createProject();
 
             SourceGenerate generate = new SourceGenerate();

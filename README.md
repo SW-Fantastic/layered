@@ -29,6 +29,9 @@ cmake --build . --config release
    - unsigned short: "Us"
    - unsigned long: "Ul"
    - void: "V"
+   - time_t : Ts
+   - size_t : Sz
+   - ssize_t: Ssz
 2. 枚举类型：使用long的修饰符，即"L"。
 3. 数组类型：使用指针的修饰符。
 4. 指针类型：基本类型的修饰符 + "p"，例如int的指针为"Ip"。
@@ -96,4 +99,4 @@ cmake --build . --config release
 - [x] Enum的解析
 - [x] 基本类型的解析
 - [x] Function的解析
-- [ ] Metadata的生成
+- [x] Metadata的生成

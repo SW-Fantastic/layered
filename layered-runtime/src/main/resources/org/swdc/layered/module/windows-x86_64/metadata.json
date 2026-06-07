@@ -1,16 +1,20 @@
-[{
-  "name": "ffi",
-  "fileName": "ffi-8.dll",
-  "vmLoad": true,
-  "dep": []
-}, {
-  "name": "jemalloc",
-  "fileName": "jemalloc.dll",
-  "vmLoad": true,
-  "dep": []
-},{
-  "name": "layer",
-  "fileName": "liblayer.dll",
-  "vmLoad": true,
-  "dep": [ "jemalloc","ffi" ]
-}]
+{
+  "libraryName": "LayerRuntime",
+  "libraryVersion": "0.0.1",
+  "descriptors": [{
+    "name": "ffi",
+    "fileName": "ffi-8.dll",
+    "vmLoad": true,
+    "dep": []
+  }, {
+    "name": "jemalloc",
+    "fileName": "jemalloc.dll",
+    "vmLoad": true,
+    "dep": []
+  },{
+    "name": "layer",
+    "fileName": "liblayer.dll",
+    "vmLoad": true,
+    "dep": [ "jemalloc","ffi" ]
+  }]
+}

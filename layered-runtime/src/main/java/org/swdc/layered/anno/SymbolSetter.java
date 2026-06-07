@@ -7,10 +7,10 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface SymbolFactory {
+public @interface SymbolSetter {
 
-    String value();
-    boolean creator() default false;
-    boolean deleter() default false;
+    String type();
+
+    String field();
 
 }

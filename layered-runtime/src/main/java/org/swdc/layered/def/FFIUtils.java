@@ -56,11 +56,12 @@ public class FFIUtils {
     public static TypeMeta extractMeta(AnnotatedElement element) {
 
         Cast cast = element.getAnnotation(Cast.class);
+        CastValue castValue = element.getAnnotation(CastValue.class);
         Unsigned unsigned = element.getAnnotation(Unsigned.class);
         ByteString byteString = element.getAnnotation(ByteString.class);
         ConstArray constArray = element.getAnnotation(ConstArray.class);
 
-        return new TypeMeta(unsigned, byteString ,cast,constArray );
+        return new TypeMeta(unsigned, byteString ,cast,castValue,constArray );
     }
 
 }

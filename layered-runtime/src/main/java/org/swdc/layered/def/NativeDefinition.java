@@ -26,7 +26,26 @@ public enum NativeDefinition {
     UNSIGNED_LONG,
     UNSIGNED_LONGLONG,
     BOOL,
-    VOID
+    VOID,
 
+    // Platform types
+    // 这些类型是基本类型的拓展类型，通过别名声明，它们长度是可变的，在wrapper统一处理为long。
+    SIZE_T(true),
+    SSIZE_T(true),
+    TIME_T(true),
+    PTR_DIFF_T(true);
 
+    private boolean platformDep;
+
+    NativeDefinition() {
+        platformDep = false;
+    }
+
+    NativeDefinition(boolean platformDep) {
+        this.platformDep = platformDep;
+    }
+
+    public boolean isPlatformDepType() {
+        return platformDep;
+    }
 }

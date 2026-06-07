@@ -253,28 +253,24 @@ public class PlatformCallHandler implements InvocationHandler {
             symbolName = symbol.value();
         }
 
-        SymbolFactory symbolFactory = method.getAnnotation(SymbolFactory.class);
+        SymbolCtor symbolFactory = method.getAnnotation(SymbolCtor.class);
         if (symbolFactory != null && !symbolFactory.value().isBlank()) {
-            symbolName = symbolFactory.value();
-            if (symbolFactory.creator()) {
-                symbolName = symbolName + "__new";
-            } else if (symbolFactory.deleter()) {
-                symbolName = symbolName + "__delete";
-            } else {
-                symbolName = method.getName();
-            }
+            symbolName = symbolFactory.value() + "__new";
         }
 
-        SymbolAccessor accessor = method.getAnnotation(SymbolAccessor.class);
-        if (accessor != null && !accessor.value().isBlank()) {
-            symbolName = accessor.value();
-            if (accessor.getter()) {
-                symbolName = symbolName + "_get_" + accessor.field();
-            } else if (accessor.setter()) {
-                symbolName = symbolName + "_set_" + accessor.field();
-            } else {
-                symbolName = method.getName();
-            }
+        SymbolDtor symbolDtor = method.getAnnotation(SymbolDtor.class);
+        if (symbolDtor != null && !symbolDtor.value().isBlank()) {
+            symbolName = symbolDtor.value() + "__delete";
+        }
+
+        SymbolGetter getter = method.getAnnotation(SymbolGetter.class);
+        if (getter != null && !getter.type().isBlank() && !getter.field().isBlank()) {
+            symbolName = getter.type() + "_get_" + getter.field();
+        }
+
+        SymbolSetter setter = method.getAnnotation(SymbolSetter.class);
+        if (setter != null && !setter.type().isBlank() && !setter.field().isBlank()) {
+            symbolName = setter.type() + "_set_" + setter.field();
         }
 
         return "(" + returnType + ")" + symbolName + "@" + paramTypes;
@@ -291,10 +287,27 @@ public class PlatformCallHandler implements InvocationHandler {
             }
         } else if (type == long.class || type == Long.class) {
             if (typeDecl != null) {
-                result = "Ul";
+
+                if (typeDecl.getUnsigned() != null) {
+                    result = "Ul";
+                } else {
+                    result = "L";
+                }
+
+                if (typeDecl.getCastValue() != null) {
+                    CastValue castValue = typeDecl.getCastValue();
+                    if (castValue.value() == PlatformType.SIZE_T) {
+                        result = "Sz";
+                    } else if (castValue.value() == PlatformType.SSIZE_T) {
+                        result = "Ssz";
+                    } else if (castValue.value() == PlatformType.TIME_T) {
+                        result = "Ts";
+                    }
+                }
             } else {
                 result = "L";
             }
+
         } else if (type == short.class || type == Short.class) {
             if (typeDecl != null) {
                 result = "Us";

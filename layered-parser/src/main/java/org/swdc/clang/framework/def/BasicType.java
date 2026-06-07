@@ -1,6 +1,5 @@
 package org.swdc.clang.framework.def;
 
-import org.swdc.clang.framework.ClangUtils;
 import org.swdc.layered.def.NativeDefinition;
 
 import java.util.Map;
@@ -34,6 +33,9 @@ public class BasicType extends AbstractNativeType {
     public static final BasicType UNSIGNED_LONGLONG = new BasicType("unsigned long long", "Ull", NativeDefinition.UNSIGNED_LONGLONG, "long");
     public static final BasicType BOOL = new BasicType("bool","B", NativeDefinition.BOOL, "bool");
     public static final BasicType VOID = new BasicType("void","V", NativeDefinition.VOID, "void");
+    public static final BasicType SIZE_T = new BasicType("size_t","Sz", NativeDefinition.SIZE_T, "size_t");
+    public static final BasicType SSIZE_T = new BasicType("ssize_t","Ssz", NativeDefinition.SSIZE_T, "ssize_t");
+    public static final BasicType TIME_T = new BasicType("time_t","Ts", NativeDefinition.TIME_T, "time_t");
 
     private static Map<String, BasicType> types = new ConcurrentHashMap<>();
 
@@ -51,11 +53,18 @@ public class BasicType extends AbstractNativeType {
     public NameCaster castAsBaseType() {
         return (name) -> {
             if (name == null || name.isEmpty()) {
+                if (getType().isPlatformDepType()) {
+                    return "long";
+                }
                 return base;
+            }
+            if (getType().isPlatformDepType()) {
+                return "long " + name;
             }
             return base + " " + name;
         };
     }
+
 
     BasicType constType() {
         BasicType constType = new BasicType(getName(), mangledFlag, getType(), base);
@@ -169,6 +178,21 @@ public class BasicType extends AbstractNativeType {
                 types.put(VOID.getName() + SUBFIX_CONST, VOID.constType());
                 types.put(VOID.getName() + SUBFIX_VOLATILE, VOID.volatileType());
                 types.put(VOID.getName() + SUBFIX_CV, VOID.constVolatileType());
+
+                types.put(SIZE_T.getName(), SIZE_T);
+                types.put(SIZE_T.getName() + SUBFIX_CONST, SIZE_T.constType());
+                types.put(SIZE_T.getName() + SUBFIX_VOLATILE, SIZE_T.volatileType());
+                types.put(SIZE_T.getName() + SUBFIX_CV, SIZE_T.constVolatileType());
+
+                types.put(SSIZE_T.getName(), SSIZE_T);
+                types.put(SSIZE_T.getName() + SUBFIX_CONST, SSIZE_T.constType());
+                types.put(SSIZE_T.getName() + SUBFIX_VOLATILE, SSIZE_T.volatileType());
+                types.put(SSIZE_T.getName() + SUBFIX_CV, SSIZE_T.constVolatileType());
+
+                types.put(TIME_T.getName(), TIME_T);
+                types.put(TIME_T.getName() + SUBFIX_CONST, TIME_T.constType());
+                types.put(TIME_T.getName() + SUBFIX_VOLATILE, TIME_T.volatileType());
+                types.put(TIME_T.getName() + SUBFIX_CV, TIME_T.constVolatileType());
 
             }
         }

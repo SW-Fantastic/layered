@@ -132,25 +132,29 @@ public class PdfiumLibrary extends AbstractLayerLibrary {
 所以，通过这种方式依次加载必要的链接库是非常重要的。
 
 ```json
-[{
-  "name": "pdfium",
-  "fileName": "pdfium.dll",
-  "vmLoad": true,
-  "dep": []
-},{
-  "name": "pdfium4j",
-  "fileName": "libpdfium4j.dll",
-  "vmLoad": false,
-  "dep": [ "pdfium" ]
-}]
+{
+  "libraryName": "pdfium4j",
+  "libraryVersion": "0.0.1",
+  "descriptors": [{
+    "name": "pdfium",
+    "fileName": "pdfium.dll",
+    "dep": []
+  },{
+    "name": "pdfium4j",
+    "fileName": "libpdfium4j.dll",
+    "dep": [ "pdfium" ]
+  }]
+}
 ```
+这个描述Json需要包含以下内容：
 
-它包含一个数组，每一项都代表着一个本地的动态库，它的各个字段含义如下：
-
- - name：这个库的名字，这是一个id，用于标识一个动态库。
- - fileName：这是这个库的文件名
- - vmLoad：这个库是否通过Java加载，如果它是必要的依赖库，请把它设置为true，如果它是本项目生成的wrapper，设置为false。
- - dep：这个库依赖的其他动态库（需要包含在metadata的json内部）
+ - LibraryName: 本库名称
+ - libraryVersion: 本库的版本（在设计中会对比版本，如果版本不一致会重新释放本地库）
+ - descriptors: 库文件的描述符，它包含一个数组，每一项都代表着一个本地的动态库，它的各个字段含义如下：
+   - name：这个库的名字，这是一个id，用于标识一个动态库。
+   - fileName：这是这个依赖库的文件名
+   - vmLoad：这个库是否通过Java加载，除非这个库包含JNI函数，否则设置为false，如果它是JNI库，该库将在运行时卸载。
+   - dep：这个库依赖的其他动态库（需要包含在metadata的json内部）
 
 通常来说，我们不需要包含完整的CRT（Java自然是带了CRT的），但是，对于Windows来说，如果你的库使用的是GNU所编译的C库，
 你就需要把它的CRT也放进来。
@@ -249,9 +253,15 @@ public interface PdfiumDocs {
 使用`@Cast`注解，通过`@Cast(OpaquePointer.class)`就能以把它解析为`Void*`但是作为`BytePointer`
 来使用。
 
-此外，对于本地对象的Getter和Setter和构造以及删除，这里有单独的注解提供，SymbolFactory注解
-用于构造函数和析构函数，通过指定creator和deleteor区分，value是本地对象的名字，SymbolAccessor
-用于本地的Getter和Setter。
+对于部分长度可变的类型，例如`size_t`，他们在Java被固定为`long`类型，并且需要使用`@CastValue`注解标注
+它们。
+
+PlatformModule这个类型，它具备一个`free`的方法，调用这个方法将会**卸载**这个动态库，以及被它加载进来的
+**依赖库**。
+
+对于本地对象的Getter和Setter和构造以及删除，这里有单独的注解提供，`@SymbolCtor`和`@SymbolDtor`
+，这两个注解分别指代构造函数和析构函数，value是本地对象的名字，`@SymbolGetter`和`@SymbolSetter`
+用于本地对象（Struct/Union/Class等）的Getter和Setter。
 
 对于本地函数到Java的回调，需要单独声明一个Java接口，并且标注`FunctionalInterface`注解，这个接口的
 对象或者lambda表达式可以通过`PlatformClosure`构造为为`libffi`的`ffi_closure`，从而在本地层面实现回调
@@ -263,21 +273,21 @@ public interface PdfiumDocs {
 
 public interface PdfiumSave {
 
-    @SymbolFactory(value = "FPDF_FILEWRITE_",creator = true)
+    @SymbolCtor("FPDF_FILEWRITE_")
     FPdfFileWrite FPDF_FileWriteAlloc();
 
-    @SymbolFactory(value = "FPDF_FILEWRITE_",deleter = true)
+    @SymbolDtor(value = "FPDF_FILEWRITE_",deleter = true)
     void FPDF_FileWriteFree(FPdfFileWrite writer);
 
-    @SymbolAccessor(value = "FPDF_FILEWRITE_", field = "WriteBlock", setter = true)
+    @SymbolSetter(type = "FPDF_FILEWRITE_", field = "WriteBlock")
     void FPDF_FileWrite_SetWriteBlock(FPdfFileWrite writer, PlatformClosure closure);
 
-
-    @SymbolAccessor(value = "FPDF_FILEWRITE_", field = "version", setter = true)
+ 
+    @SymbolSetter(type = "FPDF_FILEWRITE_", field = "version")
     void FPDF_FileWrite_SetVersion(FPdfFileWrite writer, int version);
 
 
-    @SymbolAccessor(value = "FPDF_FILEWRITE_", field = "version", getter = true)
+    @SymbolGetter(type = "FPDF_FILEWRITE_", field = "version")
     int FPDF_FileWrite_GetVersion(FPdfFileWrite writer);
 
 }

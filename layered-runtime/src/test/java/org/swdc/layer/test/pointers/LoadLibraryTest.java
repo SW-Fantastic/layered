@@ -11,6 +11,7 @@ import org.swdc.layered.pointers.Allocator;
 import org.swdc.layered.pointers.BytePointer;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Map;
 
 public class LoadLibraryTest {
@@ -27,7 +28,9 @@ public class LoadLibraryTest {
     @Test
     public void testLoadLibrary() {
 
-        PlatformModule module = PlatformModule.load(allocator,new File("libpdfium4j.dll"));
+        PlatformModule module = PlatformModule.load(allocator,new File("libpdfium4j.dll"), Arrays.asList(
+                new File("pdfium.dll")
+        ));
         Assertions.assertNotNull(module);
         Assertions.assertNotNull(module.getSymbolTable());
 
@@ -41,7 +44,9 @@ public class LoadLibraryTest {
     @Test
     public void testSymbolLoad() {
 
-        PlatformModule module = PlatformModule.load(allocator,new File("libpdfium4j.dll"));
+        PlatformModule module = PlatformModule.load(allocator,new File("libpdfium4j.dll"),Arrays.asList(
+                new File("pdfium.dll")
+        ));
         PdfiumDoc doc = module.createCallProxy(PdfiumDoc.class);
         doc.FPDF_InitLibrary();
         PDFDocument document = doc.FPDF_LoadDocument(new File("test.pdf").getAbsolutePath(), null);

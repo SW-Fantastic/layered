@@ -45,7 +45,7 @@ public class ClangFuncParamVisitor extends ClangDispatchVisitor {
 
             CXString name = LibClang.clang_getCursorSpelling(cursor);
             String paramName = ClangUtils.asString(name);
-            if (paramName.isBlank()) {
+            if (paramName == null || paramName.isBlank()) {
                 paramName = "arg" + currentIndex;
             }
 

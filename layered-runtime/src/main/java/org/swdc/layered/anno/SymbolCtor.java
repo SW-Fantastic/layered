@@ -5,13 +5,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface SymbolAccessor {
+@Retention(RetentionPolicy.RUNTIME)
+public @interface SymbolCtor {
 
     String value();
-    String field();
-    boolean getter() default false;
-    boolean setter() default false;
 
 }

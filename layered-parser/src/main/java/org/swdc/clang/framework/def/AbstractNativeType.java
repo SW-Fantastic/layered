@@ -64,10 +64,19 @@ public abstract class AbstractNativeType {
      */
     public NameCaster castFromBaseType() {
         return (name) -> {
-            if (name == null || name.isEmpty()) {
-                return getName();
+            StringBuilder castBuilder = new StringBuilder();
+            if (isConstType()) {
+                castBuilder.append("const ");
             }
-            return getName() + " " + name;
+            if (isVolatileType()) {
+                castBuilder.append("volatile ");
+            }
+            if (name == null || name.isEmpty()) {
+                castBuilder.append(getName());
+            } else {
+                castBuilder.append(getName()).append(" ").append(name);
+            }
+            return castBuilder.toString();
         };
     }
 
