@@ -5,10 +5,12 @@ import org.msgpack.jackson.dataformat.MessagePackFactory;
 import org.swdc.clang.framework.FileUtils;
 import org.swdc.layered.def.WritableFunction;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.zip.GZIPOutputStream;
 
 public class NativeProjectWriter {
 
@@ -271,6 +273,13 @@ public class NativeProjectWriter {
             sourceImpl.append("\tstatic const unsigned char metaData[] = {\n");
             ObjectMapper mapper = new ObjectMapper(new MessagePackFactory());
             byte[] metaDataBytes = mapper.writeValueAsBytes(metadata);
+
+            ByteArrayOutputStream gzTarget = new ByteArrayOutputStream();
+            GZIPOutputStream gzos = new GZIPOutputStream(gzTarget);
+            gzos.write(metaDataBytes);
+            gzos.close();
+
+            metaDataBytes = gzTarget.toByteArray();
             for (int i = 0; i < metaDataBytes.length; i++) {
                 String hex = String.format("0x%02x", metaDataBytes[i] & 0xFF);
                 sourceImpl.append(hex);
@@ -289,6 +298,11 @@ public class NativeProjectWriter {
                     .append("\treturn ").append(metaDataBytes.length).append(";\n")
                     .append("}\n");
             Files.write(new File(srcFolder, "metadata.cpp").toPath(), sourceImpl.toString().getBytes());
+
+            ObjectMapper jsonMapper = new ObjectMapper();
+            Files.write(new File(sourceRoot, "metadata.json").toPath(), jsonMapper
+                    .writerWithDefaultPrettyPrinter()
+                    .writeValueAsBytes(metadata));
 
         } catch (Exception e) {
             throw new RuntimeException(e);

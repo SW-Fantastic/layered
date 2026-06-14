@@ -1,5 +1,5 @@
-
-#include <jemalloc/jemalloc.h>
+#define JEMALLOC_NO_RENAME
+#include<jemalloc/jemalloc.h>
 
 #ifdef _WIN32
     #include <Windows.h>

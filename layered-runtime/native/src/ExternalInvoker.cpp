@@ -79,9 +79,9 @@ JNIEXPORT jlong JNICALL Java_org_swdc_layered_ExternalInvoker_loadLibrary
 
 #else 
 
-	void* result = dlopen(pPath);
+	void* handle = dlopen(pPath,RTLD_NOW | RTLD_LOCAL);
 	env->ReleaseStringUTFChars(path, pPath);
-	return reinterpret_cast<intptr_t>(result);
+	return reinterpret_cast<intptr_t>(handle);
 
 #endif
 
@@ -106,7 +106,7 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_unloadLibrary
 
 #else
 
-	intptr_t addr = reinterpret_cast<intptr_t>(address);
+	void* addr = reinterpret_cast<void*>(address);
 	dlclose(addr);
 
 #endif
@@ -146,18 +146,23 @@ JNIEXPORT jobject JNICALL Java_org_swdc_layered_ExternalInvoker_getLibrarySymbol
 #else
 
 	void* target = reinterpret_cast<void*>(address);
-	void* addr = dlsym(target, "getMetaData");
-	if (addr == NULL) {
+	void* addrGetMetadata = dlsym(target, "getMetaData");
+	if (addrGetMetadata == NULL) {
 		return NULL;
 	}
 
-	void* addrGetSize = dlsym(target, "getMetaDataSize");
-	if (addrGetSize == NULL) {
+	const unsigned char* (*getMetadata)(void) = reinterpret_cast<const unsigned char* (*)(void)>(addrGetMetadata);
+
+    void* addrGetMetadataSize = dlsym(target, "getMetaDataSize");
+
+	if (addrGetMetadataSize == NULL) {
 		return NULL;
 	}
+
+	const int (*getMetaDataSize)(void) = reinterpret_cast<const int(*)(void)>(addrGetMetadataSize);
 
 	const int size = getMetaDataSize();
-	const char* metadata = getMetadata();
+	const unsigned char* metadata = getMetadata();
 	return env->NewDirectByteBuffer((void*)metadata, size);
 
 #endif
@@ -242,7 +247,7 @@ JNIEXPORT jstring JNICALL Java_org_swdc_layered_ExternalInvoker_getLastError
 
 	char* msg = dlerror();
 	if (msg != NULL) {
-		jstring str = env->NewStringUTF((char*)buffer);
+		jstring str = env->NewStringUTF((char*)msg);
 		return str;
 	}
 	return NULL;

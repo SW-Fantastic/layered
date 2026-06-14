@@ -2,12 +2,15 @@
 cmake_minimum_required(VERSION 3.15)
 
 #定义 vcpkg 子模块路径
-set(VCPKG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg")
+set(VCPKG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg" CACHE PATH "Vcpkg root dir" FORCE)
+#对库的编译参数进行微调
+set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_CURRENT_SOURCE_DIR}/triplets")
 #如果 vcpkg.exe 不存在，自动运行 bootstrap
 if(WIN32)
     set(VCPKG_EXECUTABLE "${VCPKG_ROOT}/vcpkg.exe")
 else()
     set(VCPKG_EXECUTABLE "${VCPKG_ROOT}/vcpkg")
+    set(VCPKG_TARGET_TRIPLET "x64-linux")
 endif()
 
 if(NOT EXISTS "${VCPKG_EXECUTABLE}")
@@ -15,6 +18,9 @@ if(NOT EXISTS "${VCPKG_EXECUTABLE}")
     if(WIN32)
         execute_process(COMMAND "${VCPKG_ROOT}/bootstrap-vcpkg.bat" WORKING_DIRECTORY "${VCPKG_ROOT}")
     else()
+        if(NOT EXISTS "${VCPKG_ROOT}/.vcpkg-root")
+          file(WRITE "${VCPKG_ROOT}/.vcpkg-root" "")
+        endif()  
         execute_process(COMMAND "${VCPKG_ROOT}/bootstrap-vcpkg.sh" WORKING_DIRECTORY "${VCPKG_ROOT}")
     endif()
 endif()

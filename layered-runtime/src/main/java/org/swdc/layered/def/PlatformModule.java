@@ -7,6 +7,7 @@ import org.swdc.layered.ExternalInvoker;
 import org.swdc.layered.pointers.Allocator;
 import org.swdc.layered.pointers.OpaquePointer;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
@@ -15,6 +16,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class PlatformModule extends OpaquePointer {
 
@@ -37,11 +40,16 @@ public class PlatformModule extends OpaquePointer {
         this.initPointer(allocator,address,false);
         if (metaData != null) {
             try {
+
+                byte[] bytes = new byte[metaData.capacity()];
+                metaData.get(bytes);
+                GZIPInputStream zin = new GZIPInputStream(new ByteArrayInputStream(bytes));
+                bytes = zin.readAllBytes();
+
                 ObjectMapper mapper = new ObjectMapper(new MessagePackFactory());
                 JavaType symbolTableType = mapper.getTypeFactory()
                         .constructParametricType(HashMap.class, String.class, WritableFunction.class);
-                byte[] bytes = new byte[metaData.capacity()];
-                metaData.get(bytes);
+
                 symbolTable = mapper.readValue(bytes, symbolTableType);
                 callHandler = new PlatformCallHandler(this);
             } catch (Exception e) {

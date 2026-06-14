@@ -50,38 +50,9 @@ public class AddressPointer<T extends OpaquePointer> extends SeekablePointer<T> 
         }
         OpaquePointer allocated = getAllocator().getAllocated(addr);
         if (allocated == null) {
-            try {
-                int capacity = 1;
-                if (SeekablePointer.class.isAssignableFrom(type)) {
-                    // 移除界限，让它成为一个无界读写的指针。
-                    // 这种指针的读写是危险的，使用的时候自己想办法确认它的可用范围吧。
-                    capacity = 0;
-                }
-                Constructor<T> constructor = type.getDeclaredConstructor(
-                        Allocator.class,long.class,int.class,int.class,boolean.class,boolean.class
-                );
-                constructor.setAccessible(true);
-                T instance = constructor.newInstance(
-                        getAllocator(),addr,MemoryManager.sizeOfPointer(),capacity,false,false
-                );
-                getAllocator().ref(instance);
-                return instance;
-            } catch (Exception e) {
-            }
-
-            try {
-                Constructor<T> constructor = type.getDeclaredConstructor(
-                        Allocator.class,long.class,boolean.class
-                );
-                constructor.setAccessible(true);
-                T instance = constructor.newInstance(getAllocator(),addr,false);
-                getAllocator().ref(instance);
-                return instance;
-            } catch (Exception e) {
-            }
-
-            throw new IllegalStateException("Can not init object " + type.getName() + " with address " + addr);
-
+            OpaquePointer pointer = new OpaquePointer();
+            pointer.initPointer(getAllocator(),addr,false);
+            return pointer.reinterrupt(type);
         } else {
             return allocated.as(type);
         }

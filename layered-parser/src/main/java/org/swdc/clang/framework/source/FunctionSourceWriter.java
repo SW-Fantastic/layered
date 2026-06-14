@@ -170,7 +170,7 @@ public class FunctionSourceWriter extends AbstractSourceWriter<NativeFunction> {
 
         } else {
 
-            String retTypeSource = retType.castFromBaseType().as("result");
+            String retTypeSource = retType.castFromBaseType().as("the_result");
             String retTypeCast = retType.castAsBaseType().as("");
 
             stringBuilder.append("\t").append(retTypeSource).append(" = ").append(function.getRawName()).append("(");
@@ -183,12 +183,12 @@ public class FunctionSourceWriter extends AbstractSourceWriter<NativeFunction> {
             }
             stringBuilder.append(");\n");
             if (retType instanceof NativeArrayType || retType instanceof NativeStructType || retType instanceof NativeClassType) {
-                stringBuilder.append("\treturn reinterpret_cast<").append(retTypeCast).append(">(").append("&result").append(");\n");
+                stringBuilder.append("\treturn reinterpret_cast<").append(retTypeCast).append(">(").append("&the_result").append(");\n");
             } else {
                 if (retType instanceof NativePointerType) {
-                    stringBuilder.append("\treturn reinterpret_cast<").append(retTypeCast).append(">(").append("result").append(");\n");
+                    stringBuilder.append("\treturn reinterpret_cast<").append(retTypeCast).append(">(").append("the_result").append(");\n");
                 } else {
-                    stringBuilder.append("\treturn static_cast<").append(retTypeCast).append(">(").append("result").append(");\n");
+                    stringBuilder.append("\treturn static_cast<").append(retTypeCast).append(">(").append("the_result").append(");\n");
                 }
             }
 

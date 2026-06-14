@@ -26,6 +26,14 @@ public class Allocator {
         subPointers.put(pointer.getAddress(), pointer);
     }
 
+    void castRef(OpaquePointer pointer) {
+        if (allocated.containsKey(pointer.getAddress()) && pointer.isOwner()) {
+            allocated.put(pointer.getAddress(), pointer);
+        } else {
+            subPointers.put(pointer.getAddress(), pointer);
+        }
+    }
+
     void unref(OpaquePointer pointer) {
         if (allocated.containsKey(pointer.getAddress())) {
             return;

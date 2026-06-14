@@ -65,6 +65,7 @@ mvn -pl libclang install
 ```
 
 那么到这里libclang的Java wrapper就准备完毕了。
+这个项目想要正常运转，还需要它的parent-project，我估计后期会单独把它拆出来避免这种麻烦的问题。
 
 ## Layered Java运行时库
 
@@ -107,6 +108,13 @@ cmake -B build
 `org/swdc/layered/module/windows-x86_64`
 
 接下来你可以对本项目指向Maven的install指令，Layered Java运行时库就准备完毕了。
+
+当然，如果不想使用IDE，通过以下指令也能编译它：
+
+```bash
+cd build
+cmake --build . --config release
+```
 
 ## Layered 头文件解析器
 

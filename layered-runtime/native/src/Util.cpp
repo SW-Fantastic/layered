@@ -15,9 +15,9 @@ void* asWString(const char* javaStr) {
 		return NULL;
 	}
 	return result;
-#else 
-	return javaStr;
+#else
+	return nullptr;
 #endif
-	
+
 }
 

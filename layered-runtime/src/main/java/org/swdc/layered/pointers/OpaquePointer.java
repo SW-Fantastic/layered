@@ -1,5 +1,9 @@
 package org.swdc.layered.pointers;
 
+import org.swdc.layered.MemoryManager;
+
+import java.lang.reflect.Constructor;
+
 /**
  * 不透明指针，只有一些非常基础的属性，
  * 本指针只提供一种内存管理的形式，但是并不具体执行它。
@@ -46,6 +50,44 @@ public class OpaquePointer {
             return clazz.cast(this);
         }
         throw new ClassCastException(String.format("%s is not assignable from %s.", clazz.getName(), this.getClass().getName()));
+    }
+
+
+    public <T extends OpaquePointer> T reinterrupt(Class<T> clazz) {
+        if (clazz.isInstance(this) || clazz.isAssignableFrom(this.getClass())) {
+            return clazz.cast(this);
+        }
+        try {
+            int capacity = 1;
+            if (SeekablePointer.class.isAssignableFrom(clazz)) {
+                // 移除界限，让它成为一个无界读写的指针。
+                // 这种指针的读写是危险的，使用的时候自己想办法确认它的可用范围吧。
+                capacity = 0;
+            }
+            Constructor<T> constructor = clazz.getDeclaredConstructor(
+                    Allocator.class,long.class,int.class,int.class,boolean.class,boolean.class
+            );
+            constructor.setAccessible(true);
+            T instance = constructor.newInstance(
+                    getAllocator(),this.address, MemoryManager.sizeOfPointer(),capacity,false,this.isOwner()
+            );
+            getAllocator().castRef(instance);
+            return instance;
+        } catch (Exception e) {
+        }
+
+        try {
+            Constructor<T> constructor = clazz.getDeclaredConstructor(
+                    Allocator.class,long.class,boolean.class
+            );
+            constructor.setAccessible(true);
+            T instance = constructor.newInstance(getAllocator(),this.address,this.isOwner());
+            getAllocator().castRef(instance);
+            return instance;
+        } catch (Exception e) {
+        }
+
+        throw new ClassCastException(String.format("%s is not castable from %s.", clazz.getName(), this.getClass().getName()));
     }
 
     protected void initPointer(Allocator allocator, long address, boolean owner) {

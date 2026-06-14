@@ -83,11 +83,13 @@ public class PlatformCallHandler implements InvocationHandler {
                 }
             } else {
 
+                Parameter parameter = method.getParameters()[i];
+                TypeMeta meta = FFIUtils.extractMeta(parameter);
                 OpaquePointer autoPtr = null;
                 if (args[i] == null) {
                     autoPtr = allocator.allocateByType(method.getParameterTypes()[i],1);
                 } else {
-                    autoPtr = allocateByObject(allocator, args[i]);
+                    autoPtr = allocateByObject(allocator, args[i], meta);
                 }
 
                 if (autoPtr == null) {
@@ -100,7 +102,9 @@ public class PlatformCallHandler implements InvocationHandler {
         }
 
         try {
-            if (method.getReturnType().isPrimitive()) {
+
+            TypeMeta meta = FFIUtils.extractMeta(method);
+            if (method.getReturnType().isPrimitive() || meta.getCastValue() != null) {
                 OpaquePointer autoPtr = allocator.allocateByType(method.getReturnType(),1);
                 autoAllocated.add(autoPtr);
                 if (method.getReturnType() != void.class && method.getReturnType() != Void.class) {
@@ -182,7 +186,7 @@ public class PlatformCallHandler implements InvocationHandler {
 
     }
 
-    private OpaquePointer allocateByObject(Allocator allocator, Object arg) {
+    private OpaquePointer allocateByObject(Allocator allocator, Object arg, TypeMeta meta) {
         if (arg.getClass() == Integer.class) {
 
             IntPointer intArg = allocator.allocateInt(1);
@@ -215,6 +219,16 @@ public class PlatformCallHandler implements InvocationHandler {
 
         } else if (arg.getClass() == String.class) {
 
+            if (meta.getCharset() != null) {
+                try {
+                    byte[] bytes = arg.toString().getBytes(meta.getCharset().charset());
+                    BytePointer ptr = allocator.allocateByte(bytes.length);
+                    ptr.setBytes(bytes);
+                    return ptr;
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to decode string with given charset", e);
+                }
+            }
             return allocator.allocateByte(arg.toString());
 
         } else if (arg.getClass() == Boolean.class) {
@@ -361,6 +375,16 @@ public class PlatformCallHandler implements InvocationHandler {
         throw new IllegalStateException("Can not generate call symbol for type: " + type);
     }
 
+
+    @Override
+    public String toString() {
+        return "CallingProxy of " + module.getLibrary().getAbsolutePath();
+    }
+
+    @Override
+    public int hashCode() {
+        return toString().hashCode();
+    }
 
     public void free() {
         for (PlatformCall call: initializedCalls.values()) {

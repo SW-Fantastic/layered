@@ -153,7 +153,7 @@ public class ClangDispatchVisitor extends CXCursorVisitor {
             if (nativeType == null) {
                 nativeType = dispatchParse(cxType,cxClientData);
             }
-        } else if (cxType.kind() == LibClang.CXType_Elaborated) {
+        } else if (cxType.kind() == LibClang.CXType_Elaborated || cxType.kind() == LibClang.CXType_Typedef) {
 
             CXType target = ClangUtils.getRawType(cxType);
             AbstractNativeType rawTargetType = getByType(target, cxClientData);
