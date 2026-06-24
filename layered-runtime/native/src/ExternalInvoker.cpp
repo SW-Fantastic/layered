@@ -188,7 +188,7 @@ JNIEXPORT jlong JNICALL Java_org_swdc_layered_ExternalInvoker_lookup
 #else 
 
 	void* target = reinterpret_cast<void*>(modulePtr);
-	targetFunctionPtr = dlsym(target, "getMetaDataSize");
+	targetFunctionPtr = dlsym(target, symbolPtr);
 
 #endif
 
@@ -352,8 +352,7 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 		for (int index = 0; index < paramSize; index++) {
 			if (argTypes[index] == LAYER_ADDRESS) {
 				realParams[index] = &params[index];
-			}
-			else {
+			} else {
 				realParams[index] = params[index];
 			}
 		}

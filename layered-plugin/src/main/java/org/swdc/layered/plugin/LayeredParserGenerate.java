@@ -59,7 +59,11 @@ public class LayeredParserGenerate extends AbstractMojo {
                     headerList.add(headerFile);
                 }
             }
-            includesList.add(new File(project.getBasedir(), includeDir));
+            if(includeDir.startsWith("/")) {
+                includesList.add(new File(includeDir));
+            } else {
+                includesList.add(new File(project.getBasedir(), includeDir));
+            }
         }
 
 

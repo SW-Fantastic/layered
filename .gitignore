@@ -14,3 +14,5 @@
 .idea
 .workbuddy
 /layered-runtime/assets/
+/layered-runtime/src/main/resources/org/swdc/layered/module/linux-x86_64/*.so.*
+/layered-runtime/src/main/resources/org/swdc/layered/module/linux-x86_64/*.so

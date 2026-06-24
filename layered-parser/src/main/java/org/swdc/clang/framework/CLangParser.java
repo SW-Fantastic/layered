@@ -14,6 +14,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 public class CLangParser {
 
@@ -45,48 +46,62 @@ public class CLangParser {
         return this;
     }
 
-    public void parse() {
+    public synchronized void parse() {
 
-        CXIndex index = LibClang.clang_createIndex(0, 1);
-        String[] args = new String[includeDirs.size() + this.args.size()];
-        for (int i = 0; i < this.args.size(); ++i) {
-            args[i] = this.args.get(i);
+        try {
+
+            CountDownLatch latch = new CountDownLatch(1);
+            Thread thread = new Thread(() -> {
+                // 这里的解析逻辑似乎会损坏线程的一些本地资源，所以这个操作必须在子线程完成。
+                // Linux请确保Java版本大于等于Java 21。
+                CXIndex index = LibClang.clang_createIndex(0, 1);
+                String[] args = new String[includeDirs.size() + this.args.size()];
+                for (int i = 0; i < this.args.size(); ++i) {
+                    args[i] = this.args.get(i);
+                }
+                for (int i = 0; i < this.includeDirs.size(); ++i) {
+                    args[this.args.size() + i] = "-I" + includeDirs.get(i).getAbsolutePath();
+                }
+                PointerPointer pArgs = asPointerArray(args);
+
+                for (int i = 0; i < this.headers.size(); ++i) {
+                    File parseHeaderFile = headers.get(i);
+                    BytePointer pTargetHeader = asPointer(parseHeaderFile.getAbsolutePath());
+
+                    CXTranslationUnitImpl unit = LibClang.clang_parseTranslationUnit(
+                            index,
+                            pTargetHeader,
+                            pArgs,
+                            args.length,
+                            null,
+                            0,
+                            LibClang.CXTranslationUnit_None
+                    );
+
+                    context.withSourceFile(parseHeaderFile);
+                    ClangGlobalVisitor visitor = new ClangGlobalVisitor(context, parseHeaderFile);
+                    CXCursor cxCursor = LibClang.clang_getTranslationUnitCursor(unit);
+                    LibClang.clang_visitChildren(cxCursor, visitor, null);
+                    cxCursor.close();
+                    visitor.close();
+
+                    LibClang.clang_disposeTranslationUnit(unit);
+                    pTargetHeader.close();
+                }
+
+                for (int i = 0; i < args.length; i++) {
+                    pArgs.get(i).close();
+                }
+                pArgs.close();
+                LibClang.clang_disposeIndex(index);
+                latch.countDown();
+            });
+            thread.start();
+            latch.await();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-        for (int i = 0; i < this.includeDirs.size(); ++i) {
-            args[this.args.size() + i] = "-I" + includeDirs.get(i).getAbsolutePath();
-        }
-        PointerPointer pArgs = asPointerArray(args);
-
-        for (int i = 0; i < this.headers.size(); ++i) {
-            File parseHeaderFile = headers.get(i);
-            BytePointer pTargetHeader = asPointer(parseHeaderFile.getAbsolutePath());
-
-            CXTranslationUnitImpl unit = LibClang.clang_parseTranslationUnit(
-                    index,
-                    pTargetHeader,
-                    pArgs,
-                    args.length,
-                    null,
-                    0,
-                    LibClang.CXTranslationUnit_None
-            );
-
-            context.withSourceFile(parseHeaderFile);
-            ClangGlobalVisitor visitor = new ClangGlobalVisitor(context, parseHeaderFile);
-            CXCursor cxCursor = LibClang.clang_getTranslationUnitCursor(unit);
-            LibClang.clang_visitChildren(cxCursor, visitor, null);
-            visitor.close();
-            cxCursor.close();
-
-            LibClang.clang_disposeTranslationUnit(unit);
-            Pointer.free(pTargetHeader);
-        }
-
-        for (int i = 0; i < args.length; i++) {
-            Pointer.free(pArgs.get(i));
-        }
-        Pointer.free(pArgs);
-        LibClang.clang_disposeIndex(index);
     }
 
     private BytePointer asPointer(String str) {

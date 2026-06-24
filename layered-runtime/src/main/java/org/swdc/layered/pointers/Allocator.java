@@ -2,6 +2,7 @@ package org.swdc.layered.pointers;
 
 import org.swdc.layered.MemoryManager;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -237,7 +238,8 @@ public class Allocator {
         if (string.isBlank()) {
             string = "\0";
         }
-        BytePointer allocated = allocateByte(string.length() * MemoryManager.sizeOfByte());
+        byte[] data = string.getBytes(StandardCharsets.UTF_8);
+        BytePointer allocated = allocateByte(data.length * MemoryManager.sizeOfByte());
         allocated.setString(string);
         return allocated;
 

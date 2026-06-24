@@ -70,11 +70,12 @@ public class TestClangParser {
         File targetHeader = new File("assets/pdfium/include/fpdfview.h");
         File targetHeaderEdit = new File("assets/pdfium/include/fpdf_edit.h");
         File targetSave = new File("assets/pdfium/include/fpdf_save.h");
+        File targetDoc = new File("assets/pdfium/include/fpdf_doc.h");
 
         CLangParser parser = new CLangParser(Arrays.asList("-v"), Arrays.asList(
                 new File("assets/pdfium/include"),
                 new File("assets/pdfium/include/cpp")
-        )).addHeaders(targetHeader,targetHeaderEdit,targetSave);
+        )).addHeaders(targetHeader,targetHeaderEdit,targetSave,targetDoc);
         parser.parse();
 
         try {

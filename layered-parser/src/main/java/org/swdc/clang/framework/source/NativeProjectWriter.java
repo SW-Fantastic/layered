@@ -93,7 +93,7 @@ public class NativeProjectWriter {
         result.append("project(").append(projectName).append(")\n");
         result.append("file(GLOB _SRC src/*.cpp)\n");
         result.append("include_directories(ext)\n");
-        result.append("add_library(lib").append(projectName).append(" SHARED ${_SRC} )\n");
+        result.append("add_library(").append(projectName).append(" SHARED ${_SRC} )\n");
 
         result.append("if(CMAKE_SYSTEM_PROCESSOR MATCHES \"amd64|x86_64|AMD64\")\n");
         result.append("    set(ARCH \"x86_64\")\n");
@@ -115,7 +115,7 @@ public class NativeProjectWriter {
                 result.append("  message(FATAL_ERROR \"library ").append(lib).append(" not found at path ${CMAKE_SOURCE_DIR}/lib/").append(lib).append("/${OS_NAME}-${ARCH} \")\n");
                 result.append("endif()\n");
             }
-            result.append("target_link_libraries(lib").append(projectName).append(" PRIVATE ");
+            result.append("target_link_libraries(").append(projectName).append(" PRIVATE ");
             for (String lib : linkLibraries) {
                 result.append("${_").append(lib).append("} ");
             }
@@ -223,6 +223,7 @@ public class NativeProjectWriter {
             header.append("#ifndef ").append(fileName).append("_H\n");
             header.append("#define ").append(fileName).append("_H\n");
             header.append("#include <stdint.h>\n");
+            header.append("#include <stdlib.h>\n");
             header.append("#include \"../include/metadata.h\"\n");
 
             header.append("extern \"C\" {\n");
@@ -271,6 +272,7 @@ public class NativeProjectWriter {
             sourceImpl.append("#include \"../include/metadata.h\"\n");
             sourceImpl.append("const unsigned char* getMetaData() {\n");
             sourceImpl.append("\tstatic const unsigned char metaData[] = {\n");
+
             ObjectMapper mapper = new ObjectMapper(new MessagePackFactory());
             byte[] metaDataBytes = mapper.writeValueAsBytes(metadata);
 

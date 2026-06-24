@@ -268,7 +268,7 @@ public class StructSourceWriter extends AbstractSourceWriter<NativeStructType> {
         String mangled = ClangUtils.generateMangled(Collections.emptyList(),true);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("\t").append(struct.getName()).append("* obj = new ").append(struct.getName()).append("();\n");
+        sb.append("\t").append(struct.getName()).append("* obj = (").append(struct.getName()).append("*)malloc(sizeof(").append(struct.getName()).append("));\n");
         sb.append("\treturn reinterpret_cast<intptr_t>(obj);");
 
         TypeParameterized returnType = new TypeParameterized();
@@ -311,7 +311,7 @@ public class StructSourceWriter extends AbstractSourceWriter<NativeStructType> {
         StringBuilder sb = new StringBuilder();
         sb.append("\t").append(struct.getName()).append("* obj = reinterpret_cast<").append(struct.getName()).append("*>(").append("object").append(");\n");
         sb.append("\tif (obj == nullptr) { \n\t\treturn;\n\t}\n");
-        sb.append("\tdelete obj;");
+        sb.append("\tfree(obj);");
 
         TypeParameterized returnType = new TypeParameterized();
         returnType.setName("result");

@@ -181,12 +181,16 @@ public class ClangUtils {
         if (name == null) {
             name = "";
         }
+        name = clearModifier(name);
         String fullPrefix = qualified && !prefix.isBlank() ? prefix + "::" : "";
         if (name.contains("std") || fullPrefix.contains("std")) {
             return fullPrefix + name;
         } else {
             name = readString(LibClang.clang_getTypeSpelling(realType));
-            return fullPrefix + name;
+            if (name == null) {
+                return name;
+            }
+            return fullPrefix + clearModifier(name);
         }
     }
 

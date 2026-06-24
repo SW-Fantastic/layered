@@ -1,0 +1,15 @@
+{
+  "libraryName": "LayerRuntime",
+  "libraryVersion": "0.0.1",
+  "descriptors": [{
+    "name": "jemalloc",
+    "fileName": "libjemalloc.so.2",
+    "vmLoad": true,
+    "dep": [  ]
+  },{
+    "name": "layer",
+    "fileName": "liblayer.so",
+    "vmLoad": true,
+    "dep": [ "jemalloc" ]
+  }]
+}

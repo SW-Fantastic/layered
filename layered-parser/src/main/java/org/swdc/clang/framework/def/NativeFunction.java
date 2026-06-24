@@ -145,7 +145,7 @@ public class NativeFunction extends AbstractNativeType {
     @Override
     public String toString() {
         return "NativeFunction{" +
-                "name='" + getName() + '\'' +
+                "name='" + getRawName() + '\'' +
                 ", parameters=" + parameters.stream()
                     .map(p -> p.getType().getName())
                     .reduce((tA,tB) -> tA + "," + tB)

@@ -53,7 +53,7 @@ public class ClangGlobalVisitor extends ClangDispatchVisitor {
             return LibClang.CXChildVisit_Continue;
         } else {
 
-            CXString currentPath = ClangIO.clang_File_tryGetRealPathName(file);
+            CXString currentPath = ClangIO.clang_getFileName(file);
             if (currentPath == null || currentPath.isNull()) {
                 return LibClang.CXChildVisit_Continue;
             }

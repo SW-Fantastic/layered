@@ -98,7 +98,7 @@ public class ClangDeclaredContext implements ClangContext {
     @Override
     public <T extends AbstractNativeType> T getType(CXType type) {
 
-        String typeName = ClangUtils.getModifierName(type);
+        String typeName = ClangUtils.getTypeName(type,true);
         return getType(
                 typeName,
                 LibClang.clang_isConstQualifiedType(type) == 1,
@@ -146,8 +146,32 @@ public class ClangDeclaredContext implements ClangContext {
         if (declaredPointers.containsKey(typeName)) {
             return (T)declaredPointers.get(typeName);
         }
+        if (BasicType.getByName(targetName) != null) {
+            return (T)BasicType.getByName(targetName);
+        } else if (isConst || isVolatile) {
+            AbstractNativeType originalType = getType(targetName, false, false);
+            if (originalType != null) {
+                AbstractNativeType declared = originalType.copy();
+                declared.setConstType(isConst);
+                declared.setVolatileType(isVolatile);
+                if (originalType instanceof NativeStructType) {
+                    addDeclaredStruct((NativeStructType) originalType);
+                } else if (originalType instanceof NativeEnumType) {
+                    addDeclaredEnum((NativeEnumType) originalType);
+                } else if (originalType instanceof NativeClassType) {
+                    addDeclaredClass((NativeClassType) originalType);
+                } else if (originalType instanceof NativeFunction) {
+                    addDeclaredFunction((NativeFunction) originalType);
+                } else if (originalType instanceof NativePointerType) {
+                    addDeclaredPointer((NativePointerType) originalType);
+                } else if (originalType instanceof NativeArrayType) {
+                    addDeclaredArray((NativeArrayType) originalType);
+                }
+                return (T)declared;
+            }
+        }
 
-        return (T)BasicType.getByName(typeName);
+        return  null;
 
     }
 
