@@ -4,8 +4,13 @@ import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.CharPointer;
 import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.PointerPointer;
+import org.swdc.clang.framework.meta.DiagnosticsException;
+import org.swdc.clang.framework.source.ShimSource;
 import org.swdc.clang.framework.visitors.ClangGlobalVisitor;
 import org.swdc.libclang.core.*;
+import org.swdc.libclang.core.io.CXDiagnostic;
+import org.swdc.libclang.core.io.CXString;
+import org.swdc.libclang.core.io.ClangIO;
 
 import java.io.File;
 import java.lang.reflect.InvocationHandler;
@@ -50,8 +55,19 @@ public class CLangParser {
 
         try {
 
+            List<Exception> exceptions = new ArrayList<>();
             CountDownLatch latch = new CountDownLatch(1);
+
             Thread thread = new Thread(() -> {
+
+                /*ShimSource shimSource = new ShimSource();
+                shimSource.addTemplateDecl("json");
+                BytePointer bufShimName = asPointer("shim.h");
+                BytePointer bufShimContent = asPointer("");
+                CXUnsavedFile unsavedFile = new CXUnsavedFile();
+                unsavedFile.Filename(bufShimName);*/
+
+
                 // 这里的解析逻辑似乎会损坏线程的一些本地资源，所以这个操作必须在子线程完成。
                 // Linux请确保Java版本大于等于Java 21。
                 CXIndex index = LibClang.clang_createIndex(0, 1);
@@ -85,6 +101,11 @@ public class CLangParser {
                     cxCursor.close();
                     visitor.close();
 
+                    DiagnosticsException exception = ClangUtils.createTUException(unit);
+                    if (exception != null) {
+                        exceptions.add(exception);
+                    }
+
                     LibClang.clang_disposeTranslationUnit(unit);
                     pTargetHeader.close();
                 }
@@ -98,7 +119,11 @@ public class CLangParser {
             });
             thread.start();
             latch.await();
-
+            if (!exceptions.isEmpty()) {
+                for (Exception exception : exceptions) {
+                    throw exception;
+                }
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

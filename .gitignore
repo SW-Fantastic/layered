@@ -16,3 +16,8 @@
 /layered-runtime/assets/
 /layered-runtime/src/main/resources/org/swdc/layered/module/linux-x86_64/*.so.*
 /layered-runtime/src/main/resources/org/swdc/layered/module/linux-x86_64/*.so
+/layered-libtool/native/build/
+/layered-libtool/native/vcpkg/
+/layered-native/vcpkg/
+/layered-libtool/src/main/resources/org/swdc/clang/libtooling/windows-x86_64/*.dll
+/layered-libtool/src/main/resources/org/swdc/clang/libtooling/linux-x86_64/*.so

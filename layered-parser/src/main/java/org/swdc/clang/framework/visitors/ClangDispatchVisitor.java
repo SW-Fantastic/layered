@@ -46,6 +46,9 @@ public class ClangDispatchVisitor extends CXCursorVisitor {
 
         cursorName = ClangUtils.clearModifier(cursorName);
         String prefix = ClangUtils.getFullQualifiedPrefix(cxCursor);
+        if (cursorName.startsWith("::")) {
+            cursorName = cursorName.substring(2);
+        }
         if (!prefix.isBlank() && !cursorName.startsWith(prefix)) {
             cursorName = prefix + "::" + cursorName;
         }
@@ -122,12 +125,47 @@ public class ClangDispatchVisitor extends CXCursorVisitor {
             }
             return dispatchParse(cursorName, realTypeCursor, cxClientData);
 
+        } else if (cxCursor.kind() == LibClang.CXCursor_TypeAliasDecl) {
+
+            CXString cursorKind = LibClang.clang_getCursorKindSpelling(cxCursor.kind());
+            System.out.println("Cursor name: " + cursorName + " kind is " + ClangUtils.asString(cursorKind));
+            ClangUtils.disposeStrings(cursorKind);
+
+            CXType type = LibClang.clang_getCursorType(cxCursor);
+            type = ClangUtils.getRawType(type);
+            CXCursor realTypeCur = LibClang.clang_getTypeDeclaration(type);
+            return dispatchParse(cursorName, realTypeCur, cxClientData);
+
+        } else if (cxCursor.kind() == LibClang.CXCursor_Namespace) {
+
+            return doParseNameSpace(cursorName, cxCursor,cxClientData);
+
+        } else if (cxCursor.kind() == LibClang.CXCursor_ClassDecl) {
+
+            CXCursor tmpl = LibClang.clang_getSpecializedCursorTemplate(cxCursor);
+            if (tmpl != null && tmpl.kind() == LibClang.CXCursor_ClassTemplate) {
+                CXCursor cursor = LibClang.clang_getCursorDefinition(cxCursor);
+                return doParseClass(cursorName, cursor, cxClientData);
+            } else {
+                // 普通类型，直接解析
+                return doParseClass(cursorName, cxCursor,cxClientData);
+            }
+
+        } else if (cxCursor.kind() == LibClang.CXCursor_ClassTemplate) {
+            //return doParseNameSpace(cursorName, cxCursor,cxClientData);
         }
 
         CXString cursorKind = LibClang.clang_getCursorKindSpelling(cxCursor.kind());
         System.out.println("Cursor name: " + cursorName + " kind is " + ClangUtils.asString(cursorKind));
         ClangUtils.disposeStrings(cursorKind);
 
+        return LibClang.CXChildVisit_Continue;
+    }
+
+    private int doParseNameSpace(String cursorName, CXCursor cxCursor, CXClientData cxClientData) {
+        ClangNamespaceVisitor visitor = new ClangNamespaceVisitor(context);
+        LibClang.clang_visitChildren(cxCursor, visitor, cxClientData);
+        visitor.close();
         return LibClang.CXChildVisit_Continue;
     }
 
@@ -159,6 +197,9 @@ public class ClangDispatchVisitor extends CXCursorVisitor {
             AbstractNativeType rawTargetType = getByType(target, cxClientData);
             if (rawTargetType == null) {
                 rawTargetType = dispatchParse(target, cxClientData);
+            }
+            if (rawTargetType == null) {
+                return null;
             }
 
             boolean isConst = LibClang.clang_isConstQualifiedType(cxType) == 1;
@@ -311,12 +352,28 @@ public class ClangDispatchVisitor extends CXCursorVisitor {
         return nativeType;
     }
 
-    private void doParseClass(String className, CXClientData clientData, CXCursor cxCursor) {
+    private int doParseClass(String className, CXCursor cxCursor, CXClientData clientData) {
 
+        CXCursor template = LibClang.clang_getSpecializedCursorTemplate(cxCursor);
+        if (template != null && !template.isNull()) {
+            CXType type = LibClang.clang_getCursorType(cxCursor);
+            CXType conType = LibClang.clang_getCanonicalType(type);
+            long size = LibClang.clang_Type_getSizeOf(conType);
+            System.out.println("size: " + size);
+            cxCursor = LibClang.clang_getCursorDefinition(cxCursor);
+        }
+
+        ClangClassVisitor classVisitor = new ClangClassVisitor(context, cxCursor, className);
+        LibClang.clang_visitChildren(cxCursor, classVisitor, clientData);
+        classVisitor.close();
+        return LibClang.CXChildVisit_Continue;
 
     }
 
     private void doParseStruct(String structName, CXClientData clientData, CXCursor cxCursor) {
+        if (structName.contains("std")) {
+            return;
+        }
         NativeStructType struct = new NativeStructType(structName);
         ClangStructVisitor visitor = new ClangStructVisitor(context, struct);
         context.addDeclaredStruct(struct);

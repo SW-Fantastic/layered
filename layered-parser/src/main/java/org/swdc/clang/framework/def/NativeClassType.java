@@ -23,6 +23,10 @@ public class NativeClassType  extends AbstractNativeType {
         super(name, NativeDefinition.CLASS);
     }
 
+    protected NativeClassType (String name, NativeDefinition def) {
+        super(name, def);
+    }
+
     public void addSuperClass(NativeClassType superClass) {
         superClasses.add(superClass);
     }

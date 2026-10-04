@@ -1,6 +1,7 @@
 package org.swdc.clang.framework.def;
 
 import org.swdc.clang.framework.ClangUtils;
+import org.swdc.layered.NativeAccessor;
 import org.swdc.layered.def.NativeDefinition;
 
 import java.util.ArrayList;
@@ -37,7 +38,31 @@ public class NativeFunction extends AbstractNativeType {
      */
     private boolean destructor = false;
 
+    private boolean virtual = false;
+
+    private NativeAccessor accessor = NativeAccessor.PUBLIC;
+
     private boolean callback = false;
+
+    public NativeFunction(String name) {
+        super(name, NativeDefinition.FUNCTION);
+    }
+
+    public boolean isVirtual() {
+        return virtual;
+    }
+
+    public void setVirtual(boolean virtual) {
+        this.virtual = virtual;
+    }
+
+    public NativeAccessor getAccessor() {
+        return accessor;
+    }
+
+    public void setAccessor(NativeAccessor accessor) {
+        this.accessor = accessor;
+    }
 
     public void setCallback(boolean callback) {
         this.callback = callback;
@@ -46,11 +71,6 @@ public class NativeFunction extends AbstractNativeType {
     public boolean isCallback() {
         return callback;
     }
-
-    public NativeFunction(String name) {
-        super(name, NativeDefinition.FUNCTION);
-    }
-
 
     public void setReturnType(TypeParameterized returnType) {
         this.returnType = returnType;

@@ -1,0 +1,8 @@
+{
+  "libraryName": "layer-parser",
+  "libraryVersion": "0.0.1",
+  "descriptors": [{
+    "name": "layer",
+    "fileName": "layer.dll"
+  }]
+}

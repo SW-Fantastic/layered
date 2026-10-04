@@ -1,0 +1,21 @@
+{
+  "name": "layer-libtool",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "name": "llvm",
+      "default-features": false,
+      "features": [
+        "clang",
+        "clang-tools-extra",
+        "utils"
+      ]
+    },
+    "pkgconf",
+    "libxml2",
+    "zlib",
+    "zstd",
+    "libffi",
+    "mimalloc"
+  ]
+}

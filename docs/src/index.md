@@ -4,7 +4,7 @@ layout: home
 
 hero:
   name: "Layered"
-  text: "分层本地调用接口"
+  text: "分层本地调用接口（本项目正在施工，暂时不可用）"
   tagline: 自解释，扁平化的本地库调用接口。
   actions:
     - theme: brand

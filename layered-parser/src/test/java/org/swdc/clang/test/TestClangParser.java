@@ -11,6 +11,7 @@ import org.swdc.clang.framework.source.NativeProjectWriter;
 import org.swdc.clang.framework.source.SourceContext;
 import org.swdc.clang.framework.source.StructSourceWriter;
 import org.swdc.clang.framework.source.SourceGenerate;
+import org.swdc.libclang.core.LibClang;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -20,9 +21,10 @@ public class TestClangParser {
 
     public static void main(String[] args) {
         // testWithZlib();
-         testwithComplexC();
+        testwithComplexC();
         // testwithSimpleC();
         // testWtihVeryComplexC();
+        // testWithScopedC();
     }
 
     private static void testwithSimpleC() {
@@ -152,6 +154,19 @@ public class TestClangParser {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+    }
+
+    private static void testWithScopedC() {
+        CLangParser parser = new CLangParser(Arrays.asList("-x","c++","-std=c++17","-fsyntax-only"), Arrays.asList(
+                new File("assets/json/include"),
+                new File("assets/json/ext")
+        )).addHeader(
+                new File("assets/json/ext/wrapper.hpp")
+        );
+        parser.parse();
+
+
 
     }
 

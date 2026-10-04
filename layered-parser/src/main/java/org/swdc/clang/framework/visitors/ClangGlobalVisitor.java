@@ -37,17 +37,12 @@ public class ClangGlobalVisitor extends ClangDispatchVisitor {
         String cursorName = ClangUtils.asString(name);
         ClangUtils.disposeStrings(name);
 
-        if (cursorName == null) {
-            System.out.println("Warning: cursor name is null");
-            return LibClang.CXChildVisit_Continue;
-        }
-
         CXFile file = new CXFile();
         int[] line = new int[1];
         int[] column = new int[1];
         int[] offset = new int[1];
         CXSourceLocation location = LibClang.clang_getCursorLocation(cxCursor);
-        ClangIO.clang_getSpellingLocation(location, file, line, column, offset);
+        ClangIO.clang_getFileLocation(location, file, line, column, offset);
         if (file.isNull()) {
             // 无法获取到文件路径，直接忽略。
             return LibClang.CXChildVisit_Continue;
@@ -66,6 +61,14 @@ public class ClangGlobalVisitor extends ClangDispatchVisitor {
             }
 
         }
+
+        if (cursorName == null) {
+            CXString cursorKind = LibClang.clang_getCursorKindSpelling(cxCursor.kind());
+            System.out.println("Cursor name: " + cursorName + " kind is " + ClangUtils.asString(cursorKind));
+            ClangUtils.disposeStrings(cursorKind);
+            return LibClang.CXChildVisit_Continue;
+        }
+
 
         // C语言中，header通常包含类型定义（Struct，Union，Enum）和函数。
        if (cxCursor.kind() == LibClang.CXCursor_TypedefDecl) {

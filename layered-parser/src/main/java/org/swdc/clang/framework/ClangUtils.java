@@ -2,13 +2,9 @@ package org.swdc.clang.framework;
 
 import org.bytedeco.javacpp.BytePointer;
 import org.swdc.clang.framework.def.*;
-import org.swdc.libclang.core.CXCursor;
-import org.swdc.libclang.core.CXType;
-import org.swdc.libclang.core.LibClang;
-import org.swdc.libclang.core.io.CXFile;
-import org.swdc.libclang.core.io.CXSourceLocation;
-import org.swdc.libclang.core.io.CXString;
-import org.swdc.libclang.core.io.ClangIO;
+import org.swdc.clang.framework.meta.DiagnosticsException;
+import org.swdc.libclang.core.*;
+import org.swdc.libclang.core.io.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -217,7 +213,8 @@ public class ClangUtils {
         while (parent.kind() != LibClang.CXCursor_TranslationUnit) {
             // 最外层的事TranslationUnit，它指的是全局作用域，
             // 如果抵达了全局作用域，则跳出循环。
-            if (LibClang.clang_Cursor_isAnonymous(parent) == 1) {
+            if (LibClang.clang_Cursor_isAnonymous(parent) == 1 || LibClang.clang_Cursor_isInlineNamespace(parent) == 1) {
+                // inline namespace的内容会隐式提升到外层作用域，所以忽视inline namespace，直接追溯上层即可。
                 // 作用域是匿名的，例如匿名namespace或者struct等
                 // 匿名作用域不需要出现在全限定名中。
                 // 继续向上查找父作用域
@@ -407,6 +404,23 @@ public class ClangUtils {
             }
         }
         return result.toString();
+    }
+
+
+    public static DiagnosticsException createTUException(CXTranslationUnitImpl unit) {
+        int numDiagnostics = LibClang.clang_getNumDiagnostics(unit);
+        if (numDiagnostics == 0) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int idx = 0; idx < numDiagnostics; idx++) {
+            CXDiagnostic diagnostic = LibClang.clang_getDiagnostic(unit, idx);
+            CXString spelling = ClangIO.clang_formatDiagnostic(diagnostic,
+                    ClangIO.clang_defaultDiagnosticDisplayOptions());
+            builder.append(ClangUtils.readString(spelling));
+            ClangIO.clang_disposeDiagnostic(diagnostic);
+        }
+        return new DiagnosticsException(builder.toString());
     }
 
 }
