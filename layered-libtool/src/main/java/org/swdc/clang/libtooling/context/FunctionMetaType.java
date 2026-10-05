@@ -134,4 +134,11 @@ public class FunctionMetaType extends AbstractMetaType {
                 MetaTypeUtils.FUNC_NAME_PLACEHOLDER, "*"
         );
     }
+
+    @Override
+    public String cppTypeFullName(String varName) {
+        return MetaTypeUtils.cppFunctionType(this).replace(
+                MetaTypeUtils.FUNC_NAME_PLACEHOLDER, "*" + varName
+        );
+    }
 }

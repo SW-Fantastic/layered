@@ -56,26 +56,13 @@ public class CMakeProjectGenerator {
 
         this.generator.generateCMakeProject();
         for (File headerFile : headerFiles) {
-
-            String fileName = headerFile.getName();
-            int dotIndex = fileName.lastIndexOf('.');
-            if (dotIndex != -1) {
-                fileName = fileName.substring(0, dotIndex);
-            }
-
             factory.resolve(headerFile, Clang.parseHeader(
                     this.generator.getProjectDir(), commands, Arrays.asList(headerFile)
             ));
-
-            CXXWrapSourceGenerator wrapperGenerator = new CXXWrapSourceGenerator(
-                    fileName, factory
-            );
-
-            wrapperGenerator.generate(
-                    includeDir,
-                    sourceDir
-            );
         }
+
+        CXXWrapSourceGenerator wrapperGenerator = new CXXWrapSourceGenerator("pdfium",factory);
+        wrapperGenerator.generate(includeDir, sourceDir);
 
     }
 

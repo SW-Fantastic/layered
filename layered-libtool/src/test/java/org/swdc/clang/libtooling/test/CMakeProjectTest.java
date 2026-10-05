@@ -24,14 +24,20 @@ public class CMakeProjectTest {
     @Test
     public void generateTest() {
 
+        File projectDir = new File("./assets/cmake_test");
         CMakeProjectGenerator projectGenerator = new CMakeProjectGenerator(
-                new File("./assets/cmake_test"),
+                projectDir,
                 Collections.emptyList(),
                 "project_test"
         );
 
-        projectGenerator.addAPIHeader(new File("../assets/pdfium/include/fpdfview.h"));
-        projectGenerator.addAPIHeader(new File("../assets/pdfium/include/fpdf_edit.h"));
+        projectGenerator.addIncludeDir(new File(projectDir, "libs/pdfium/include"));
+        projectGenerator.addLibraryDir(new File(projectDir,"libs/pdfium/libs"));
+        projectGenerator.addLinkedLibrary("pdfium");
+
+        projectGenerator.addAPIHeader(new File(projectDir,"libs/pdfium/include/fpdfview.h"));
+        projectGenerator.addAPIHeader(new File(projectDir,"libs/pdfium/include/fpdf_edit.h"));
+
         projectGenerator.generate();
 
     }

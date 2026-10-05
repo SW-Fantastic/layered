@@ -182,8 +182,12 @@ llvm::json::Object FunctionDescriptor::getJson() {
 
 RecordTypeDescriptor::RecordTypeDescriptor(
 	std::string name, 
-	std::string namespacePath
+	std::string namespacePath,
+	bool isConst, 
+	bool isVoliate
 ) : TypeDescriptor(name, namespacePath) {
+	this->isConst = isConst;
+	this->isVolatile = isVoliate;
 }
 
 DescriptorType RecordTypeDescriptor::getType() {
@@ -195,8 +199,15 @@ std::string RecordTypeDescriptor::getTypeStr() {
 }
 
 RecordTypeDescriptor* RecordTypeDescriptor::copy() {
-	return new RecordTypeDescriptor(this->getName(), this->getNamespace());
+	
+	RecordTypeDescriptor* copied = new RecordTypeDescriptor(this->getName(), this->getNamespace(),this->isConst, this->isVolatile);
+	copied->fields = this->fields;
+	copied->publicMethods = this->publicMethods;
+	copied->overrideableMethods = this->overrideableMethods;
+	return copied;
+
 }
+
 
 void RecordTypeDescriptor::updateField(std::string fieldName, std::string typeId) {
 	if (fieldName.empty() || typeId.empty()) {
@@ -226,9 +237,13 @@ llvm::json::Object RecordTypeDescriptor::getJson() {
 
 PointerTypeDescriptor::PointerTypeDescriptor(
 	std::string targetTypeId,
-	std::string targetTypeName
+	std::string targetTypeName,
+	bool isConst, 
+	bool isVolatile
 ) : TypeDescriptor(targetTypeName, "") {
 	this->targetTypeId = targetTypeId;
+	this->isConst = isConst;
+	this->isVolatile = isVolatile;
 }
 
 DescriptorType PointerTypeDescriptor::getType() {
@@ -244,7 +259,7 @@ std::string PointerTypeDescriptor::getName() {
 }
 
 PointerTypeDescriptor* PointerTypeDescriptor::copy() {
-	return new PointerTypeDescriptor(this->targetTypeId, this->getName());
+	return new PointerTypeDescriptor(this->targetTypeId, this->getName(), this->isConst, this->isVolatile);
 }
 
 std::string PointerTypeDescriptor::getId() {

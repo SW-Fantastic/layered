@@ -35,10 +35,11 @@ int main(int argc, char** argv) {
 	const std::string pwd = ".";
 	const char* params[] = { "-Xclang"};
 	const char* args[] = {
-		"D:\\JavaProjects\\layered\\assets\\pdfium-v152.0.7947.0\\include\\fpdfview.h"
+		"D:\\JavaProjects\\layered\\assets\\pdfium-v152.0.7947.0\\include\\fpdfview.h",
+		"D:\\JavaProjects\\layered\\assets\\pdfium-v152.0.7947.0\\include\\fpdf_edit.h"
 	};
 
-	parseSourceFile(pwd.c_str(), 0, params, 1, args);
+	parseSourceFile(pwd.c_str(), 0, params, 2, args);
 
 	return 0;
 }

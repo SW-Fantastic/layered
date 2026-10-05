@@ -144,10 +144,6 @@ PointerTypeDescriptor* AnalysiserContext::put(PointerTypeDescriptor* ptrType) {
 	}
 
 	this->pushPointerType(ptrType);
-	this->pushPointerType(ptrType->copyConst());
-	this->pushPointerType(ptrType->copyVolatile());
-	this->pushPointerType(ptrType->copyConstVolatile());
-
 	return ptrType;
 
 }
@@ -159,9 +155,9 @@ RecordTypeDescriptor* AnalysiserContext::put(RecordTypeDescriptor* recType) {
 	}
 
 	this->pushStructType(recType);
-	this->pushStructType(recType->copyConst());
-	this->pushStructType(recType->copyVolatile());
-	this->pushStructType(recType->copyConstVolatile());
+	if (recType->hasAnyModifier()) {
+		this->pushStructType(recType->copyRaw());
+	}
 	return recType;
 
 }

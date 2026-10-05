@@ -21,3 +21,4 @@
 /layered-native/vcpkg/
 /layered-libtool/src/main/resources/org/swdc/clang/libtooling/windows-x86_64/*.dll
 /layered-libtool/src/main/resources/org/swdc/clang/libtooling/linux-x86_64/*.so
+/layered-native/build/

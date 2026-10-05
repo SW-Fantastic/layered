@@ -50,6 +50,21 @@ public class PointerMetaType extends AbstractMetaType {
     }
 
     @Override
+    public String cppTypeFullName(String varName) {
+
+        AbstractMetaType metaType = MetaTypeUtils.getLastPointee(this);
+        String ptrModifier = MetaTypeUtils.cppPtrModifiers(this);
+        if (metaType instanceof FunctionMetaType) {
+            FunctionMetaType functionMetaType = (FunctionMetaType)metaType;
+            String targetType = MetaTypeUtils.cppFunctionType(functionMetaType);
+            return targetType.replace(MetaTypeUtils.FUNC_NAME_PLACEHOLDER, ptrModifier + varName);
+        }
+
+        return cppTypeFullName() + " " + varName;
+
+    }
+
+    @Override
     public String castFromRawType(String varName, String paramName) {
 
         String ptrModifier = MetaTypeUtils.cppPtrModifiers(this);
@@ -62,7 +77,7 @@ public class PointerMetaType extends AbstractMetaType {
             String targetType = MetaTypeUtils.cppFunctionType(functionMetaType);
             return targetType.replace(MetaTypeUtils.FUNC_NAME_PLACEHOLDER, ptrModifier + varName) +
                     " = reinterpret_cast<" +
-                    targetType.replace(MetaTypeUtils.FUNC_NAME_PLACEHOLDER, "") +
+                    targetType.replace(MetaTypeUtils.FUNC_NAME_PLACEHOLDER, ptrModifier) +
                     ">(" + paramName + ");";
 
         } else {

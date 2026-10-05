@@ -1,7 +1,6 @@
 package org.swdc.clang.libtooling.generator.sources;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class RenderableSource {
 
@@ -13,9 +12,19 @@ public class RenderableSource {
 
     private final String includePath;
 
+    private final List<String> includes = new ArrayList<>();
+
     public RenderableSource(String prefix, String includeRelativePath) {
         this.prefix = prefix;
         this.includePath = includeRelativePath;
+    }
+
+    public void addInclude(String includePath) {
+        this.includes.add(includePath);
+    }
+
+    public List<String> getIncludes() {
+        return Collections.unmodifiableList(includes);
     }
 
     public String getIncludePath() {

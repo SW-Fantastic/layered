@@ -12,6 +12,7 @@ public class DescriptorsFactory {
 
     private Map<File,AnalysiserMetadata> metadata = new HashMap<>();
     private Map<File, Map<String, FunctionMetaType>> resolvedFunction = new HashMap<>();
+    private Map<String, FunctionMetaType> accessors =  new HashMap<>();
 
     private List<File> parsedHeaders = new ArrayList<>();
 
@@ -109,6 +110,13 @@ public class DescriptorsFactory {
 
             AbstractMetaType pointee = transform(header,descriptor);
             cursor.setTargetType(pointee);
+
+            if (resolvedPointer.containsKey(cursor.getMangledName())) {
+                PointerMetaType exists = resolvedPointer.get(cursor.getMangledName());
+                exists.merge(cursor);
+                return exists;
+            }
+
             return built;
 
         } else if (descriptor instanceof BuiltInDescriptor) {
@@ -136,19 +144,22 @@ public class DescriptorsFactory {
                 builtIn = new BuiltInMetaType(MetaType.DOUBLE);
             } else if (typeName.equals("void")) {
                 builtIn = new BuiltInMetaType(MetaType.VOID);
+            } else if (typeName.equals("size_t")) {
+                builtIn = new BuiltInMetaType(MetaType.SIZE_T);
             } else {
                 throw new IllegalArgumentException("Unknown built-in type: " + typeName);
             }
 
             builtIn.setName(builtInDescriptor.getName());
-            builtIn.setUnsigned(builtInDescriptor.getConst());
+            builtIn.setUnsigned(builtInDescriptor.isUnsigned());
             builtIn.setVolatile(builtInDescriptor.getVolatile());
             builtIn.setConst(builtInDescriptor.getConst());
             if (resolvedBuiltIn.containsKey(builtIn.getMangledName())) {
-                BuiltInMetaType exists = resolvedBuiltIn.get(builtInDescriptor.getName());
+                BuiltInMetaType exists = resolvedBuiltIn.get(builtIn.getMangledName());
                 exists.merge(builtIn);
                 return exists;
             }
+            resolvedBuiltIn.put(builtIn.getMangledName(), builtIn);
 
             return builtIn;
 
@@ -214,6 +225,14 @@ public class DescriptorsFactory {
             functionMeta.setParameterTypes(parameters);
             functionMeta.setCallback(functionDescriptor.isCallback());
 
+            for (Map<String, FunctionMetaType> declared: this.resolvedFunction.values()) {
+                if (declared.containsKey(functionMeta.getMangledName())) {
+                    FunctionMetaType exists = declared.get(functionMeta.getMangledName());
+                    exists.merge(functionMeta);
+                    return exists;
+                }
+            }
+
             Map<String, FunctionMetaType> resolvedFunctions = this.resolvedFunction.get(header);
             if (resolvedFunctions == null) {
                 resolvedFunctions = new HashMap<>();
@@ -233,6 +252,88 @@ public class DescriptorsFactory {
         }
 
         throw new IllegalArgumentException("Unknown descriptor type: " + descriptor.getClass().getName());
+
+    }
+
+    /**
+     * 获取（或创建）指定记录字段的 setter 访问器函数元信息。
+     * <p>
+     * 根据记录类型与字段名构造一个用于写入该字段值的访问器：
+     * 函数名为 "set" + 字段名，命名空间为 "记录命名空间::记录名"，
+     * 返回类型为 void，参数依次为（记录自身, 字段值），
+     * 并继承字段类型的 const / volatile 限定。
+     * 若已存在相同修饰名（mangled name）的访问器，则将其与新建元信息合并后返回既有实例。
+     *
+     * @param record    目标记录的元类型，其字段集合不允许为空
+     * @param fieldName 待生成 setter 的字段名称，必须已存在于记录的字段定义中
+     * @return 该字段 setter 对应的函数元类型；若访问器已存在则返回合并后的既有实例
+     * @throws IllegalArgumentException 当记录未定义任何字段，或字段名称为 null / 不存在时抛出
+     */
+    public FunctionMetaType getRecordFieldSetter(RecordMetaType record, String fieldName) {
+
+        if (record.getFields().isEmpty()) {
+            throw new IllegalArgumentException("No record fields defined");
+        }
+        if (fieldName == null || !record.getFields().containsKey(fieldName)) {
+            throw new IllegalArgumentException("Unknown field name: " + fieldName);
+        }
+
+        AbstractMetaType fieldType = record.getFields().get(fieldName);
+
+        FunctionMetaType functionMeta = new FunctionMetaType();
+        functionMeta.setName("set" + fieldName);
+        functionMeta.setNamespace(record.getNamespace() + "::" + record.getName());
+        functionMeta.setReturnType(resolvedBuiltIn.get("void"));
+        functionMeta.setConst(fieldType.isConst());
+        functionMeta.setVolatile(fieldType.isVolatile());
+        functionMeta.setParameterTypes(Arrays.asList(record, fieldType));
+        if (accessors.containsKey(functionMeta.getMangledName())) {
+            FunctionMetaType exists = accessors.get(functionMeta.getMangledName());
+            exists.merge(functionMeta);
+            return exists;
+        }
+        accessors.put(functionMeta.getMangledName(), functionMeta);
+        return functionMeta;
+        
+    }
+
+    /**
+     * 获取指定记录类型中某个字段的 getter 函数元数据。
+     * <p>
+     * 根据记录类型与字段名构造对应的 getter 函数元数据，包括函数名（"get" + 字段名）、
+     * 所属命名空间（记录命名空间 :: 记录名）、返回类型以及 const/volatile 限定符，
+     * 并将该记录类型作为函数的首个参数。若该访问器已存在，则合并后返回已存在的实例。
+     *
+     * @param record 记录类型，需包含字段定义
+     * @param fieldName 字段名称，不能为 null 且必须存在于记录字段中
+     * @return 对应字段的 getter 函数元数据；若已存在同签名访问器则返回合并后的实例
+     * @throws IllegalArgumentException 当记录未定义任何字段或字段名不存在时抛出
+     */
+    public FunctionMetaType getRecordFieldGetter(RecordMetaType record, String fieldName) {
+
+        if (record.getFields().isEmpty()) {
+            throw new IllegalArgumentException("No record fields defined");
+        }
+        if (fieldName == null || !record.getFields().containsKey(fieldName)) {
+            throw new IllegalArgumentException("Unknown field name: " + fieldName);
+        }
+
+        AbstractMetaType fieldType = record.getFields().get(fieldName);
+
+        FunctionMetaType functionMeta = new FunctionMetaType();
+        functionMeta.setName("get" + fieldName);
+        functionMeta.setNamespace(record.getNamespace() + "::" + record.getName());
+        functionMeta.setReturnType(fieldType);
+        functionMeta.setConst(fieldType.isConst());
+        functionMeta.setVolatile(fieldType.isVolatile());
+        functionMeta.setParameterTypes(Arrays.asList(record));
+        if (accessors.containsKey(functionMeta.getMangledName())) {
+            FunctionMetaType exists = accessors.get(functionMeta.getMangledName());
+            exists.merge(functionMeta);
+            return exists;
+        }
+        accessors.put(functionMeta.getMangledName(), functionMeta);
+        return functionMeta;
 
     }
 

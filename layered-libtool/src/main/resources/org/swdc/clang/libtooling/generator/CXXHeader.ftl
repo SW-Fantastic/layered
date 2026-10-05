@@ -1,6 +1,12 @@
 #ifndef _[=getPrefix()]_H_
 #define _[=getPrefix()]_H_
 
+#include<stdint.h>
+#include <cstddef>
+<#list getIncludes() as includeItem>
+#include"[=includeItem]"
+</#list>
+
 #ifdef _WIN32
     #define _[=getPrefix()]_API __declspec(dllexport)
 #else

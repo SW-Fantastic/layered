@@ -73,14 +73,14 @@ public abstract class AbstractMetaType {
     }
 
     public void setConst(boolean isConst) {
-        this.modifier = this.modifier & ~Modifiers.CVMask;
+        this.modifier = this.modifier & ~Modifiers.IsConst;
         if (isConst) {
             this.modifier = this.modifier | Modifiers.IsConst;
         }
     }
 
     public void setVolatile(boolean isVolatile) {
-        this.modifier = this.modifier & ~Modifiers.CVMask;
+        this.modifier = this.modifier & ~Modifiers.IsVolatile;
         if (isVolatile) {
             this.modifier = this.modifier | Modifiers.IsVolatile;
         }
@@ -178,6 +178,10 @@ public abstract class AbstractMetaType {
         } else {
             return typeModifier + namespace + "::" + getName();
         }
+    }
+
+    public String cppTypeFullName(String varName) {
+        return cppTypeFullName() + " " + varName;
     }
 
 

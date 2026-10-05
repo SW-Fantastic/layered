@@ -37,6 +37,7 @@ public:
 	virtual std::string getName();
 	virtual std::string getNamespace();
 	virtual llvm::json::Object getJson();
+	virtual ~BaseTypeDescriptor() = default;
 
 protected:
 
@@ -85,6 +86,19 @@ public:
 		target->isConst = true;
 		return target;
 	}
+
+	C* copyRaw() {
+		C* target = copy();
+		target->isVolatile = false;
+		target->isConst = false;
+		return target;
+	}
+
+	bool hasAnyModifier() {
+		return this->isConst || this->isVolatile;
+	}
+
+	virtual ~TypeDescriptor() = default;
 
 
 };
@@ -146,7 +160,7 @@ class RecordTypeDescriptor : public TypeDescriptor<RecordTypeDescriptor>{
 
 public:
 
-	RecordTypeDescriptor(std::string name, std::string namespacePath);
+	RecordTypeDescriptor(std::string name, std::string namespacePath,bool isConst, bool isVoliate);
 
 	DescriptorType getType() override;
 	std::string getTypeStr() override;
@@ -168,7 +182,7 @@ class PointerTypeDescriptor : public TypeDescriptor<PointerTypeDescriptor>{
 
 public:
 
-	PointerTypeDescriptor(std::string targetTypeId, std::string targetTypeName);
+	PointerTypeDescriptor(std::string targetTypeId, std::string targetTypeName, bool isConst, bool isVolatile);
 
 	DescriptorType getType() override;
 	std::string getTypeStr() override;

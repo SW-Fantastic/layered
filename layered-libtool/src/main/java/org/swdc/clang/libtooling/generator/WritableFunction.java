@@ -11,6 +11,12 @@ import java.util.List;
 public class WritableFunction {
 
     /**
+     * 目标函数名，在生成的Wrapper中，此名称代表了实际的本地函数的名称，
+     * 运行时通过查找此名称获取函数地址。
+     */
+    private String targetName;
+
+    /**
      * Mangled name，函数的唯一标识符，由本项目通过libtooling提供的
      * Metadata，通过一定规则生成。
      * 本项目的运行时需要在代理对象中通过参数类型，函数名和返回值计算此字符串，
@@ -30,16 +36,10 @@ public class WritableFunction {
      */
     private MetaType returnType;
 
-    /**
-     * 函数索引，由本项目在生成wrapper的时候动态生成，
-     * 运行时通过计算的MangledName读取此索引值，
-     * 用以而获取本地函数的地址。
-     */
-    private int functionIndex;
 
-    public WritableFunction(int index, String mangledName, List<MetaType> params, MetaType returnType) {
-        this.functionIndex = index;
+    public WritableFunction(String targetName, String mangledName, List<MetaType> params, MetaType returnType) {
         this.mangledName = mangledName;
+        this.targetName = targetName;
         this.params = params;
         this.returnType = returnType;
     }
@@ -56,7 +56,7 @@ public class WritableFunction {
         return params;
     }
 
-    public int getFunctionIndex() {
-        return functionIndex;
+    public String getTargetName() {
+        return targetName;
     }
 }

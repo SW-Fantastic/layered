@@ -114,12 +114,16 @@ std::string ParserHelper::getScope(clang::QualType type) {
 
 std::string ParserHelper::getTypeName(clang::QualType type) {
 
+	clang::QualType rawType = type;
 	type = type.getCanonicalType();
 	if (type->isPointerType() || type->isReferenceType()) {
 		type = ParserHelper::getTypeNoRefPtr(type);
 	}
 
 	if (type->isBuiltinType()) {
+		if (rawType.getAsString().rfind("size_t") != std::string::npos) {
+			return "size_t";
+		}
 		type = type->getCanonicalTypeUnqualified();
 		return type.getAsString();
 	}
@@ -251,15 +255,25 @@ std::string PointerParser::parse(ClangType rawType) {
 
 	PointerTypeDescriptor * result = nullptr;
 	while (!types.empty()) {
-		types.pop();
+		clang::QualType innerType = types.top();
 		if (result == nullptr) {
-			result = new PointerTypeDescriptor(targetTypeId, desc->getName());
+			result = new PointerTypeDescriptor(
+				targetTypeId, desc->getName(), 
+				innerType.isConstQualified(), 
+				innerType.isVolatileQualified()
+			);
 			this->context->put(result);
 		} else {
-			PointerTypeDescriptor* next = new PointerTypeDescriptor(result->getId(), result->getName());
+			PointerTypeDescriptor* next = new PointerTypeDescriptor(
+				result->getId(),
+				result->getName(), 
+				innerType.isConstQualified(), 
+				innerType.isVolatileQualified()
+			);
 			this->context->put(next);
 			result = next;
 		}
+		types.pop();
 	}
 	return result->getId();
 
@@ -287,7 +301,7 @@ std::string StructParser::parse(ClangType rawType) {
 		return "";
 	}
 
-	RecordTypeDescriptor* result = new RecordTypeDescriptor(qName, nsName);
+	RecordTypeDescriptor* result = new RecordTypeDescriptor(qName, nsName, qType.isConstQualified(), qType.isVolatileQualified());
 
 	for (const clang::FieldDecl* fieldDecl : recordDecl->fields()) {
 		

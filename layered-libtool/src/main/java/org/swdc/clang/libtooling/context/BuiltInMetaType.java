@@ -26,11 +26,34 @@ public class BuiltInMetaType extends AbstractMetaType {
     }
 
     @Override
+    public String cppTypeFullName() {
+        if (getName() == null || getName().isBlank()) {
+            throw new IllegalArgumentException("BuiltInMetaType cannot be null or blank");
+        }
+        String cppModifier = MetaTypeUtils.cppTypeModifier(this);
+        if (isUnsigned()) {
+            cppModifier += " unsigned ";
+        }
+        return cppModifier + getRawType().getTypeName();
+    }
+
+    @Override
     public String getMangledName() {
         if (getName() == null || getName().isBlank()) {
             throw new IllegalArgumentException("Name cannot be null or blank");
         }
-        return isUnsigned() ? "U" + getRawType().getMangledFlag() : getRawType().getMangledFlag();
+        String cvModifier = "";
+        if (isConst()) {
+            cvModifier += "C";
+        }
+        if (isVolatile()) {
+            cvModifier += "V";
+        }
+        String result = (isUnsigned() ? "U" : "") + getRawType().getTypeName();
+        if (cvModifier.isBlank()) {
+            return result;
+        }
+        return "[" + cvModifier + "]" + result;
     }
 
     @Override
