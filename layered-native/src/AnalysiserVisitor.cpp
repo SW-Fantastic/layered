@@ -154,7 +154,7 @@ std::string FunctionProtoParser::parse(ClangType rawType) {
 	if (retTypeId.empty()) {
 		return "";
 	}
-	std::string funcName = "_callback_" + funcProtoType->getNumParams();
+	std::string funcName = "_callback_" + std::to_string(funcProtoType->getNumParams());
 	
 	std::vector<std::string> params;
 	for (int index = 0; index < funcProtoType->getNumParams(); index++) {

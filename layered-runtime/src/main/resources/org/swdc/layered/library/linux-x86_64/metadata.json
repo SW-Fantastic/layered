@@ -1,0 +1,10 @@
+{
+  "libraryName": "LayerRuntime",
+  "libraryVersion": "0.0.1",
+  "descriptors": [{
+    "name": "layer",
+    "fileName": "liblayerRuntime.so",
+    "vmLoad": true,
+    "dep": [ ]
+  }]
+}

@@ -26,7 +26,7 @@ public class MemoryManager {
 
     public static native int free(long address);
 
-    public static native int freeAligned(long address);
+    public static native int freeAligned(long address, int alignment);
 
     public static native boolean memset(long address, int value, long size);
 

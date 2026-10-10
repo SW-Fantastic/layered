@@ -2,163 +2,104 @@ package org.swdc.layered.pointers;
 
 import org.swdc.layered.MemoryManager;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
-/**
- * 二进制类型数据指针，内容是byte类型的，可以存储多种数据。
- */
-public class BytePointer extends SeekablePointer<Character> {
+public class BytePointer extends SeekablePointer{
 
-    protected BytePointer(Allocator allocator, BytePointer source, int offset) {
+    protected BytePointer(Allocator allocator, long address, int alignment, boolean owner, int capacity) {
+        super(allocator, address, alignment, owner);
+        this.capacity = capacity;
+    }
+
+    protected BytePointer(Allocator allocator, OpaquePointer source, long offset) {
         super(allocator, source, offset);
     }
 
-    protected BytePointer(Allocator allocator, long address, int elementSize, int capacity, boolean aligned, boolean owner) {
-        super(allocator, address, elementSize, capacity, aligned, owner);
+    public BytePointer(UniquePointer pointer) {
+        super(pointer);
     }
 
-    public byte[] getBytes() {
+    @Override
+    public int getElementMemorySize() {
+        return MemoryManager.sizeOfByte();
+    }
+
+    public byte get(int index) {
         if (isNull()) {
-            throw new NullPointerException("Pointer is null");
-        }
-        if (getCapacity() > 0) {
-            return getBytes(0, getCapacity());
-        }
-        throw new IllegalArgumentException("Using get(int size) instead.");
-    }
-
-    public byte[] getBytes(int size) {
-        return getBytes(0, size);
-    }
-
-    public byte[] getBytes(int offset, int size) {
-
-        if (size < 0 || getCapacity() > 0 && size > getCapacity()) {
-            throw new IllegalArgumentException("Invalid byte array size (" + size + ") given");
-        }
-
-        if (isNull()) {
-            throw new NullPointerException("Null pointer is not allowed");
-        }
-
-        return MemoryManager.readByteArray(getAddress(), offset, size);
-    }
-
-    public byte getByte(int index) {
-        if (index < 0 || getCapacity() > 0 && index >= getCapacity()) {
-            throw new IllegalArgumentException("Invalid byte array index (" + index + ") given");
-        }
-
-        if (isNull()) {
-            throw new NullPointerException("Null pointer is not allowed");
+            throw new RuntimeException("Pointer is null");
         }
         return MemoryManager.readByte(getAddress(), index);
     }
 
-    public void setByte(byte b, int index) {
-
+    public void set(int index, byte value) {
         if (isNull()) {
-            throw new NullPointerException("Null pointer is not allowed");
+            throw new RuntimeException("Pointer is null");
         }
-
-        if (getCapacity() > 0 && index > getCapacity() || index < 0) {
-            throw new IllegalArgumentException("Invalid byte array size (" + index + ") given");
-        }
-
-        MemoryManager.writeByte(getAddress(), index, b);
+        MemoryManager.writeByte(getAddress(), index, value);
     }
 
-    public void setBytes(byte[] b) {
-
-        setBytes(b, 0, 0,b.length);
-
-    }
-
-    public void setBytes(byte[] b, int offsetDst) {
-
-        setBytes(b, 0, offsetDst,b.length);
-
-    }
-
-    public void setBytes(byte[] b, int offsetSrc, int offsetDst) {
-
-        setBytes(b, offsetSrc, offsetDst,b.length);
-
-    }
-
-    public void setBytes(byte[] b, int srcOffset, int dstOffset, int size) {
-
-        if (b == null) {
-            throw new NullPointerException("Null pointer is not allowed");
-        }
-
-        if (srcOffset + size > b.length) {
-            throw new IllegalArgumentException("Invalid byte array size (" + size + ") given");
-        }
-
-        if(getCapacity() > 0 && size > getCapacity()) {
-            throw new IllegalArgumentException("Invalid byte array size (" + size + ") given");
-        }
-
-        if (getCapacity() > 0 && dstOffset + size > getCapacity()) {
-            throw new IllegalArgumentException("Invalid byte array size (" + size + ") given");
-        }
-
+    public byte[] getArray(int offset, int size) {
         if (isNull()) {
-            throw new NullPointerException("Null pointer is not allowed");
+            throw new RuntimeException("Pointer is null");
         }
-
-        MemoryManager.writeByteArray(getAddress(),dstOffset,b,srcOffset,size);
-
+        return MemoryManager.readByteArray(getAddress(),offset, size);
     }
 
-    public String getString() {
-        return getString(StandardCharsets.UTF_8);
-    }
-
-
-    public String getString(Charset charset)  {
-
+    public void setArray(int srcOffset, int destOffset, byte[] values) {
         if (isNull()) {
-            throw new NullPointerException("Null pointer is not allowed");
+            throw new RuntimeException("Pointer is null");
         }
-
-        return new String(getBytes(), charset);
-
+        MemoryManager.writeByteArray(getAddress(),destOffset, values, srcOffset,values.length);
     }
 
-    public String getString(String charset) {
 
+    public String getAsString() {
         if (isNull()) {
-            throw new NullPointerException("Null pointer is not allowed");
+            throw new RuntimeException("Pointer is null");
         }
-
-        long strlen = MemoryManager.strlen(getAddress());
-        if (strlen > 0) {
-            try {
-                byte[] data = getBytes((int)strlen);
-                return new String(data, charset);
-            } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return null;
-
+        return getAsString(StandardCharsets.UTF_8);
     }
 
-    public void setString(String data) {
-
+    public String getAsString(Charset charset) {
         if (isNull()) {
-            throw new NullPointerException("Null pointer is not allowed");
+            throw new RuntimeException("Pointer is null");
         }
-        setBytes(data.getBytes(StandardCharsets.UTF_8));
-
+        if (getCapacity() <= 0) {;
+            throw new RuntimeException("Unknown byte length");
+        }
+        return getAsString(0, (int)getCapacity(),charset);
     }
 
-    public static BytePointer unmanaged(Allocator allocator,long address, int capacity) {
-        return new BytePointer(allocator,address,MemoryManager.sizeOfByte(),capacity,false,false);
+
+    public String getAsString(int offset, int size, Charset charset) {
+        if (isNull()) {
+            throw new RuntimeException("Pointer is null");
+        }
+        byte[] bytes = getArray(offset, size);
+        return new String(bytes, charset);
+    }
+
+    public void setString(String value) {
+        if(isNull()) {
+            throw new RuntimeException("Pointer is null");
+        }
+        setString(value, StandardCharsets.UTF_8);
+    }
+
+    public void setString( String value, Charset charset) {
+        if(isNull()) {
+            throw new RuntimeException("Pointer is null");
+        }
+        setString(0, value, charset);
+    }
+
+    public void setString(int offset, String value, Charset charset) {
+        if(isNull()) {
+            throw new RuntimeException("Pointer is null");
+        }
+        byte[] bytes = value.getBytes(charset);
+        setArray(0, offset, bytes);
     }
 
 }

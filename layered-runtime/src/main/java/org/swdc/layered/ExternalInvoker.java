@@ -1,8 +1,6 @@
 package org.swdc.layered;
 
 
-import org.swdc.layered.def.PlatformCallback;
-
 import java.nio.ByteBuffer;
 
 public class ExternalInvoker {

@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.swdc</groupId>
     <artifactId>layered-plugin</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <packaging>maven-plugin</packaging>
 
     <properties>
@@ -18,8 +18,8 @@
     <dependencies>
         <dependency>
             <groupId>org.swdc</groupId>
-            <artifactId>layered-parser</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>layered-libtool</artifactId>
+            <version>1.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>

@@ -21,16 +21,7 @@ public class PointerMetaType extends AbstractMetaType {
 
     @Override
     public String getMangledName() {
-        String CV = "";
-        if (isConst()) {
-            CV += "C";
-        }
-        if (isVolatile()) {
-            CV += "V";
-        }
-        return (CV.isBlank() ? "" : "[" + CV + "]") +
-                targetType.getMangledName() +
-                getRawType().getMangledFlag();
+        return MetaTypeUtils.cppPtrMangled(this);
     }
 
 

@@ -9,3 +9,7 @@ const unsigned char* getMetaData() {
     return metaData;
 
 }
+
+const int getMetaDataSize() {
+    return [=metaDataSize];
+}

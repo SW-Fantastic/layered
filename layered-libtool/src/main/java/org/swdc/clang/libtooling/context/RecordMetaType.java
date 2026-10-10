@@ -30,15 +30,8 @@ public class RecordMetaType extends AbstractMetaType {
             typeName = getNamespace() + "::" + getName();
         }
 
-        String CV = "";
-        if (isConst()) {
-            CV += "C";
-        }
-        if (isVolatile()) {
-            CV += "V";
-        }
-
-        return (CV.isBlank() ? "" : "[" + CV + "]") + typeName;
+        String modifier = MetaTypeUtils.cppMangledModifier(this);
+        return modifier + typeName;
     }
 
     @Override

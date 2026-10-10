@@ -5,14 +5,14 @@ module swdc.layered.runtime {
     requires com.fasterxml.jackson.annotation;
     requires jackson.dataformat.msgpack;
 
-    exports org.swdc.layered.module;
-    exports org.swdc.layered.pointers;
-    exports org.swdc.layered;
-    exports org.swdc.layered.def;
-    exports org.swdc.layered.anno;
+    opens org.swdc.layered.library to com.fasterxml.jackson.databind;
+    opens org.swdc.layered.calling to com.fasterxml.jackson.databind;
 
-    opens org.swdc.layered.def to com.fasterxml.jackson.databind;
-    opens org.swdc.layered.module to com.fasterxml.jackson.databind;
-    opens org.swdc.layered.anno to com.fasterxml.jackson.databind;
+    exports org.swdc.layered.library;
+    exports org.swdc.layered.pointers;
+    exports org.swdc.layered.calling;
+    exports org.swdc.layered.types;
+    exports org.swdc.layered;
+
 
 }

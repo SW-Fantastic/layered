@@ -187,7 +187,7 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
             ObjectMapper mapper = new ObjectMapper();
             mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
             mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-            byte[] metaJson = mapper.writeValueAsBytes(metadata);
+            byte[] metaJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(metadata);
 
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             GZIPOutputStream gzos = new GZIPOutputStream(bos);
@@ -211,7 +211,6 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
             File metaHeader = new File(includeDir, "api_metadata.h");
             File metaSource = new File(sourceDir, "api_metadata.cpp");
 
-
             List<String> includes = new ArrayList<>();
             for (File file : descriptorsFactory.getParsedHeaders()) {
                 String includePath = metaSource.toPath().toAbsolutePath().getParent()
@@ -227,6 +226,7 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
             Map<String, Object> context = new HashMap<>();
             context.put("includePath", metaIncludePath);
             context.put("metaData", sourceImpl.toString());
+            context.put("metaDataSize", compressed.length);
             context.put("includes", includes);
 
             Template metaHeaderTemplate = getTemplate("CXXMetadataHeader");
@@ -245,6 +245,11 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
             FileOutputStream metaSourceOs = new FileOutputStream(metaSource);
             metaSourceOs.write(metaSourceWriter.toString().getBytes(StandardCharsets.UTF_8));
             metaSourceOs.close();
+
+            File metaJsonFile = new File(sourceDir, "api_metadata.json");
+            FileOutputStream metaJsonOs = new FileOutputStream(metaJsonFile);
+            metaJsonOs.write(metaJson);
+            metaJsonOs.close();
 
         } catch (Exception e) {
             throw new RuntimeException(e);

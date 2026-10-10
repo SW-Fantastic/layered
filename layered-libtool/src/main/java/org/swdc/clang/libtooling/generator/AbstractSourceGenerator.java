@@ -15,9 +15,10 @@ public abstract class AbstractSourceGenerator {
             return cfg;
         }
         cfg = new Configuration(Configuration.VERSION_2_3_23);
+        cfg.setInterpolationSyntax(Configuration.SQUARE_BRACKET_INTERPOLATION_SYNTAX);
         cfg.setClassForTemplateLoading(getClass(),"");
         cfg.setDefaultEncoding("UTF-8");
-        cfg.setInterpolationSyntax(Configuration.SQUARE_BRACKET_INTERPOLATION_SYNTAX);
+        cfg.setNumberFormat("computer");
         return cfg;
 
     }

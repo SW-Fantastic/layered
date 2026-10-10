@@ -17,6 +17,8 @@ extern "C" {
 
 _LAYER_META_API const unsigned char* getMetaData();
 
+_LAYER_META_API const int getMetaDataSize();
+
 }
 
 #endif

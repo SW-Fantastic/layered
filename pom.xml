@@ -10,10 +10,9 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>layered-parser</module>
-        <module>layered-runtime</module>
-        <module>layered-plugin</module>
         <module>layered-libtool</module>
+        <module>layered-plugin</module>
+        <module>layered-runtime</module>
     </modules>
 
     <properties>

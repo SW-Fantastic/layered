@@ -24,6 +24,26 @@ public class MetaTypeUtils {
     }
 
     /**
+     * 根据Type的CV修饰符生成用于名称修饰（mangled name）的CV标记。
+     * const 记为 C，volatile 记为 V，两者均无时返回空字符串，否则以方括号包裹。
+     * @param type 元数据对象
+     * @return 名称修饰用的CV标记，如"[C]"、"[V]"、"[CV]"或空字符串
+     */
+    public static String cppMangledModifier(AbstractMetaType type) {
+        String modifier = "";
+        if (type.isConst()) {
+            modifier += "C";
+        }
+        if (type.isVolatile()) {
+            modifier += "V";
+        }
+        if (modifier.isBlank()) {
+            return "";
+        }
+        return "[" + modifier + "]";
+    }
+
+    /**
      * 根据指针类型链生成C++的多级指针修饰符字符串。
      * @param ptrType 指针元数据类型
      * @return C++指针修饰符字符串，格式为"* const* volatile ..."等
@@ -40,6 +60,27 @@ public class MetaTypeUtils {
             next = pointerMetaType.getTargetType();
         }
         return castBuilder.toString();
+
+    }
+
+    /**
+     * 根据指针类型链生成C++的指针类型修饰名（mangled name）。
+     * @param ptrType 指针元数据类型
+     * @return 指针类型的修饰名，格式为"目标类型名_ptr_[CV修饰]..."等
+     */
+    public static String cppPtrMangled(PointerMetaType ptrType) {
+
+        AbstractMetaType next = ptrType;
+        StringBuilder castBuilder = new StringBuilder();
+        while (next instanceof PointerMetaType) {
+            PointerMetaType pointerMetaType = (PointerMetaType)next;
+            castBuilder.append("ptr_").append(
+                    MetaTypeUtils.cppMangledModifier(pointerMetaType)
+            );
+            next = pointerMetaType.getTargetType();
+        }
+
+        return next.getMangledName() + "_" + castBuilder;
 
     }
 

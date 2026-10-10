@@ -18,7 +18,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 	result = JNI_VERSION_1_6;
 	javaVM = vm;
 
-	jclass closureClazz = env->FindClass("org/swdc/layered/def/PlatformClosure");
+	jclass closureClazz = env->FindClass("org/swdc/layered/calling/PlatformClosure");
 	if (closureClazz == NULL) {
 		return JNI_ERR;
 	}
@@ -73,7 +73,8 @@ JNIEXPORT jlong JNICALL Java_org_swdc_layered_ExternalInvoker_loadLibrary
 
 #ifdef _WIN32
 	
-	HMODULE handle = LoadLibrary(LPCWSTR(pPath));
+	std::unique_ptr<wchar_t[]> ptr = toPlatformStr(pPath);
+	HMODULE handle = LoadLibraryW(ptr.get());
 	env->ReleaseStringUTFChars(path, pPath);
 	return reinterpret_cast<intptr_t>(handle);
 
@@ -344,9 +345,9 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 
 	int paramSize = env->GetArrayLength(layerFlags);
 	jint* argTypes = env->GetIntArrayElements(layerFlags, 0);
-	void** realParams = NULL;
+	void** realParams = reinterpret_cast<void**>(paramsAddr);
 
-	if (paramsAddr != NULL) {
+	/*if (paramsAddr != NULL) {
 		realParams = new void* [paramSize];
 		void** params = reinterpret_cast<void**>(paramsAddr);
 		for (int index = 0; index < paramSize; index++) {
@@ -356,18 +357,20 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 				realParams[index] = params[index];
 			}
 		}
-	}
+	} */
 	
 	LayerCall* call = reinterpret_cast<LayerCall*>(cifAddr);
 	ffi_cif* cifPtr = call->cif;
+
+	printf("param 0 - %lld \n", reinterpret_cast<intptr_t>(*realParams));
 
 	void* functionPtr = reinterpret_cast<void*>(functionAddr);
 	void* result = reinterpret_cast<void*>(resultAddr);
 	ffi_call(cifPtr, FFI_FN(functionPtr), result, realParams);
 
-	if (realParams != NULL) {
+	/*if (realParams != NULL) {
 		delete[] realParams;
-	}
+	}*/
 
 }
 

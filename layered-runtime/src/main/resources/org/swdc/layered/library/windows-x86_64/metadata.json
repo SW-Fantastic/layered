@@ -1,0 +1,10 @@
+{
+  "libraryName": "LayerRuntime",
+  "libraryVersion": "0.0.1",
+  "descriptors": [{
+    "name": "layerRuntime",
+    "fileName": "layerRuntime.dll",
+    "vmLoad": true,
+    "dep": []
+  }]
+}

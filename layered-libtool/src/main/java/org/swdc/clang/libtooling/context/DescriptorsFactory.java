@@ -111,9 +111,9 @@ public class DescriptorsFactory {
             AbstractMetaType pointee = transform(header,descriptor);
             cursor.setTargetType(pointee);
 
-            if (resolvedPointer.containsKey(cursor.getMangledName())) {
-                PointerMetaType exists = resolvedPointer.get(cursor.getMangledName());
-                exists.merge(cursor);
+            if (resolvedPointer.containsKey(built.getMangledName())) {
+                PointerMetaType exists = resolvedPointer.get(built.getMangledName());
+                exists.merge(built);
                 return exists;
             }
 
@@ -281,8 +281,12 @@ public class DescriptorsFactory {
         AbstractMetaType fieldType = record.getFields().get(fieldName);
 
         FunctionMetaType functionMeta = new FunctionMetaType();
-        functionMeta.setName("set" + fieldName);
-        functionMeta.setNamespace(record.getNamespace() + "::" + record.getName());
+        functionMeta.setName("set_" + fieldName);
+        if (record.getNamespace().isBlank()) {
+            functionMeta.setNamespace(record.getName());
+        } else {
+            functionMeta.setNamespace(record.getNamespace() + "::" + record.getName());
+        }
         functionMeta.setReturnType(resolvedBuiltIn.get("void"));
         functionMeta.setConst(fieldType.isConst());
         functionMeta.setVolatile(fieldType.isVolatile());
@@ -321,8 +325,12 @@ public class DescriptorsFactory {
         AbstractMetaType fieldType = record.getFields().get(fieldName);
 
         FunctionMetaType functionMeta = new FunctionMetaType();
-        functionMeta.setName("get" + fieldName);
-        functionMeta.setNamespace(record.getNamespace() + "::" + record.getName());
+        functionMeta.setName("get_" + fieldName);
+        if (record.getNamespace().isBlank()) {
+            functionMeta.setNamespace(record.getName());
+        } else {
+            functionMeta.setNamespace(record.getNamespace() + "::" + record.getName());
+        }
         functionMeta.setReturnType(fieldType);
         functionMeta.setConst(fieldType.isConst());
         functionMeta.setVolatile(fieldType.isVolatile());

@@ -5,14 +5,11 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
-import org.swdc.clang.framework.CLangParser;
-import org.swdc.clang.framework.ClangContext;
-import org.swdc.clang.framework.ClangDeclaredContext;
-import org.swdc.clang.framework.def.NativeFunction;
-import org.swdc.clang.framework.def.NativeStructType;
-import org.swdc.clang.framework.source.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.swdc.clang.libtooling.Clang;
+import org.swdc.clang.libtooling.generator.CMakeProjectGenerator;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -21,6 +18,7 @@ import java.util.*;
 @Mojo(name = "gen-native-project")
 public class LayeredParserGenerate extends AbstractMojo {
 
+    private static final Logger log = LoggerFactory.getLogger(LayeredParserGenerate.class);
     @Inject
     private MavenProject project;
 
@@ -34,64 +32,81 @@ public class LayeredParserGenerate extends AbstractMojo {
         }
 
         try {
+
+            Clang.initialize(new File(project.getBasedir(), ".layered"));
+
             PlatformConfigure platformConfigure = mapper.readValue(configure,PlatformConfigure.class);
-            ParserConfigure parserConfigure = platformConfigure.getConfigure();
-
-            StructSourceWriter writer = new StructSourceWriter();
-            FunctionSourceWriter functionWriter = new FunctionSourceWriter();
-
-            List<File> headerList = new ArrayList<>();
-            List<File> includesList = new ArrayList<>();
-            for (String includeDir: parserConfigure.getIncludeDirs()) {
-                for (String header: parserConfigure.getHeaders()) {
-                    File headerFile = new File(includeDir, header);
-                    if (headerFile.exists() && headerFile.isFile()) {
-                        headerList.add(headerFile);
-                    }
-                }
-                if(includeDir.startsWith("/")) {
-                    includesList.add(new File(includeDir));
-                } else {
-                    includesList.add(new File(project.getBasedir(), includeDir));
-                }
+            File projectDir = new File(project.getBasedir(), "layered");
+            if (!projectDir.exists()) {
+                projectDir.mkdirs();
             }
 
-            CLangParser parser = new CLangParser(parserConfigure.getParameters(), includesList);
-            parser.addHeaders(headerList.toArray(new File[0]));
-            parser.parse();
+            CMakeProjectGenerator projectGenerator = new CMakeProjectGenerator(
+                    projectDir,
+                    Collections.emptyList(),
+                    platformConfigure.getProjectName()
+            );
 
-            NativeProjectWriter projectWriter = new NativeProjectWriter(platformConfigure.getName(),new File(project.getBasedir(), "layered"));
-            for (Map.Entry<String,String> entry:  parserConfigure.getLibraries().entrySet()) {
-                File libDir = new File(project.getBasedir(), entry.getValue());
-                projectWriter.addLibrary(entry.getKey(), libDir);
-                projectWriter.linkLibrary(entry.getKey());
+            String os = System.getProperty("os.name").toLowerCase();
+            String osKey = "";
+            if (os.contains("windows")) {
+                osKey = "windows";
+            } else if (os.contains("linux")) {
+                osKey = "linux";
+            } else if (os.contains("mac") || os.contains("darwin")) {
+                osKey = "mac";
+            } else {
+                throw new MojoExecutionException("Unsupported OS : " + os);
             }
-            for (File file : includesList) {
-                projectWriter.addLibraryHeader(file);
+
+            List<String> arch64 = Arrays.asList(
+                    "amd64","x64","x86_64"
+            );
+            String arch = System.getProperty("os.arch").toLowerCase();
+            if (arch64.contains(arch)) {
+                osKey += "-x64";
+            } else {
+                osKey += "-" + arch;
             }
 
-            projectWriter.createProject();
+            PlatformSpecified specified = platformConfigure.getPlatforms().get(osKey);
+            if (specified == null) {
+                throw new MojoExecutionException("No platform specified for : " + osKey);
+            }
 
-            SourceGenerate generate = new SourceGenerate();
-            for (File file : parser.getHeaders()) {
-                ClangContext context = parser.getContext(file);
-                SourceContext sourceContext = generate.createContext();
-                for (NativeStructType struct : context.getDeclaredStructs()) {
-                    writer.createCalls(sourceContext,struct);
+            for (String includeDir : specified.getIncludeSearchDirs()) {
+                File includeDirFile = new File(includeDir).getAbsoluteFile();
+                if (!includeDirFile.exists()) {
+                    throw new MojoExecutionException("Include dir not found : " + includeDir);
                 }
-                for (NativeFunction function : context.getDeclaredFunctions()) {
-                    functionWriter.createCalls(sourceContext,function);
-                }
-                projectWriter.writeSource(file, sourceContext);
+                projectGenerator.addIncludeDir(includeDirFile);
             }
 
-            projectWriter.writeEntryPoint();
+            for (String libraryDir : specified.getLibrarySearchDirs()) {
+                File libraryDirFile = new File(libraryDir).getAbsoluteFile();
+                if (!libraryDirFile.exists()) {
+                    throw new MojoExecutionException("Library dir not found : " + libraryDir);
+                }
+                projectGenerator.addLibraryDir(libraryDirFile);
+            }
+
+            for (String header : specified.getHeaders()) {
+                File headerFile = new File(header).getAbsoluteFile();
+                if (!headerFile.exists()) {
+                    throw new MojoExecutionException("Header file not found : " + header);
+                }
+                projectGenerator.addAPIHeader(headerFile);
+            }
+
+            for (String library : specified.getLibraries()) {
+                projectGenerator.addLinkedLibrary(library);
+            }
+
+            projectGenerator.generate();
+
         } catch (Exception e) {
             throw new MojoExecutionException("unknown problem : ", e);
         }
-
-
-
 
     }
 
