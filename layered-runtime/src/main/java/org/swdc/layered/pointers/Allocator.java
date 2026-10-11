@@ -121,7 +121,11 @@ public class Allocator {
                 long address = pointer.getAddress();
                 pointer.unsafeClear();
                 map.remove(address);
+                if(map.isEmpty()) {
+                    referencedPointers.remove(raw.getAddress());
+                }
             }
+
         } finally {
             lock.writeLock().unlock();
         }
@@ -189,7 +193,20 @@ public class Allocator {
     void releaseMoveNative(UniquePointer ptr) {
         try {
             lock.writeLock().lock();
-            movingPointers.remove(ptr.getAddress());
+            if (movingPointers.containsKey(ptr.getAddress())) {
+                movingPointers.remove(ptr.getAddress());
+            } else if (borrowedPointers.containsKey(ptr.getAddress())) {
+                borrowedPointers.remove(ptr.getAddress());
+            } else if (ptr.getSource() != null) {
+                OpaquePointer raw = PtrUtils.getRawPointer(ptr.getSource());
+                Map<Long, OpaquePointer> map = referencedPointers.get(raw.getAddress());
+                if (map != null) {
+                    map.remove(ptr.getSource().getAddress());
+                    if (map.isEmpty()) {
+                        referencedPointers.remove(raw.getAddress());
+                    }
+                }
+            }
         } finally {
             lock.writeLock().unlock();
         }
@@ -407,11 +424,13 @@ public class Allocator {
         if (address == 0) {
             return;
         }
+
         if (alignment <= 0) {
             MemoryManager.free(address);
         } else {
             MemoryManager.freeAligned(address, alignment);
         }
+        allocatedPointers.remove(address);
 
     }
 

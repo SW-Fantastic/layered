@@ -172,6 +172,8 @@ public class DescriptorsFactory {
             recordMeta.setNamespace(recordDescriptor.getNamespace());
             recordMeta.setConst(recordDescriptor.getConst());
             recordMeta.setVolatile(recordDescriptor.getVolatile());
+            recordMeta.setMovable(recordDescriptor.isMovable());
+            recordMeta.setHasNoArgsCtor(recordDescriptor.isHasNoArgsCtor());
 
             Map<String, AbstractMetaType> metaFields = new HashMap<>();
             for (Map.Entry<String,String> field :  recordDescriptor.getFields().entrySet()) {

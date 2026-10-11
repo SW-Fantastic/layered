@@ -1,6 +1,7 @@
 package org.swdc.layered.calling;
 
 
+import org.swdc.layered.MemoryManager;
 import org.swdc.layered.pointers.*;
 
 import java.lang.reflect.Constructor;
@@ -8,6 +9,10 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+/**
+ * 本地函数分发器，分发Native方法调用到native函数，
+ * 实现具体的本地模块调用和相关功能。
+ */
 public class LayerInvokeHandler implements InvocationHandler {
 
     private LayerInvoker invoker;
@@ -19,89 +24,85 @@ public class LayerInvokeHandler implements InvocationHandler {
     /**
      * 代理调用入口，负责将 Java 方法调用转发到底层动态库并转换返回值。
      *
-     * 通过 CIF 处理器将入参转换为原生指针后执行调用，再根据方法声明的返回类型，
-     * 将调用结果指针解引用为对应的 Java 基本类型或包装类型；对于指针类型，
-     * 则通过 UniquePointer 构造函数构造包装对象，最后释放临时结果指针。
+     * 若调用的是 Object 类声明的方法，则直接在本处理器实例上反射执行；否则通过
+     * CIF 处理器将入参写入缓冲区后执行原生调用，再依据方法声明的返回类型，将结果
+     * 指针解引用为对应的 Java 基本类型或包装类型。对于 OpaquePointer 及其子类型，
+     * 则借助 PtrPointer 构造包装对象。调用出现异常时释放结果指针，并在 finally 中
+     * 统一释放入参缓冲区。
      *
      * @param proxy 代理对象本身
      * @param method 被调用的方法，用于获取对应的 CIF 处理器及返回类型
      * @param args 方法调用入参
      * @return 转换后的返回值，void 方法返回 null
-     * @throws Throwable 当返回值类型无法转换时抛出异常
+     * @throws Throwable 当原生调用失败或返回值类型无法转换时抛出
      */
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 
+        if (method.getDeclaringClass() == Object.class) {
+            return method.invoke(this, args);
+        }
+
+        LayerCIFHandler handler = invoker.getCIFHandler(method);
         OpaquePointer result = null;
-        LayerBuffer buffer = new LayerBuffer(invoker.getAllocator(), args == null ? 0 : args.length);
+        LayerBuffer buffer = null;
 
         try {
 
-            LayerCIFHandler handler = invoker.getCIFHandler(method);
-            handler.transformParameters(buffer, args);
+            buffer = handler.allocParameters(args);
             result = handler.call(buffer);
 
             Class<?> returnType = method.getReturnType();
             if (returnType == void.class || returnType == Void.class) {
-                result.close();
+
                 return null;
+
             } else if(returnType == int.class || returnType == Integer.class) {
-                IntPointer intPointer = (IntPointer)result;
-                int res = intPointer.get(0);
-                result.close();
-                return res;
+
+                return MemoryManager.readInt(result.getAddress(),0);
+
             } else if(returnType == long.class || returnType == Long.class) {
-                LongPointer longPointer = (LongPointer)result;
-                long res = longPointer.get(0);
-                result.close();
-                return res;
+
+                return MemoryManager.readLong(result.getAddress(),0);
+
             } else if (returnType == float.class || returnType == Float.class) {
-                FloatPointer floatPointer = (FloatPointer)result;
-                float res = floatPointer.get(0);
-                result.close();
-                return res;
+
+                return MemoryManager.readFloat(result.getAddress(),0);
+
             } else if (returnType == double.class || returnType == Double.class) {
-                DoublePointer  doublePointer = (DoublePointer)result;
-                double res = doublePointer.get(0);
-                result.close();
-                return res;
+
+                return MemoryManager.readDouble(result.getAddress(),0);
+
             } else if (returnType == short.class || returnType == Short.class) {
-                ShortPointer shortPointer = (ShortPointer)result;
-                short res = shortPointer.get(0);
-                result.close();
-                return res;
+
+                return MemoryManager.readShort(result.getAddress(),0);
+
             } else if (returnType == boolean.class || returnType == Boolean.class) {
 
                 if (result instanceof IntPointer) {
-                    IntPointer intPointer = (IntPointer)result;
-                    int res = intPointer.get(0);
-                    result.close();
-                    return (res != 0);
+
+                    return (MemoryManager.readInt(result.getAddress(), 0) != 0);
+
                 } else if (result instanceof BytePointer) {
-                    BytePointer bytePointer = (BytePointer) result;
-                    byte res = bytePointer.get(0);
-                    result.close();
-                    return (res != 0);
+
+                    return (MemoryManager.readByte(result.getAddress(), 0) != 0);
+
                 } else if (result instanceof ShortPointer) {
-                    ShortPointer intPointer = (ShortPointer)result;
-                    int res = intPointer.get(0);
-                    result.close();
-                    return (res != 0);
+
+                    return (MemoryManager.readShort(result.getAddress(), 0) != 0);
+
                 }
 
-                result.close();
                 throw new RuntimeException("Can not cast to boolean return type");
 
             } else if (returnType == char.class || returnType == Character.class) {
-                BytePointer bytePointer = (BytePointer)result;
-                byte res = bytePointer.get(0);
-                result.close();
-                return (char)res;
+
+                return MemoryManager.readByte(result.getAddress(), 0);
+
             } else if (returnType == byte.class || returnType == Byte.class) {
-                BytePointer bytePointer = (BytePointer)result;
-                byte res = bytePointer.get(0);
-                result.close();
-                return res;
+
+                return MemoryManager.readByte(result.getAddress(), 0);
+
             } else if (OpaquePointer.class.isAssignableFrom(returnType)) {
                 try {
 
@@ -125,9 +126,21 @@ public class LayerInvokeHandler implements InvocationHandler {
             throw throwable;
 
         } finally {
-            buffer.close();
+
+            handler.freeParameters(buffer);
+
         }
 
+    }
+
+    @Override
+    public String toString() {
+        return "LayerInvokeHandler { at native address " + Long.toHexString(this.invoker.getModuleAddress()) + " }";
+    }
+
+    @Override
+    public int hashCode() {
+        return toString().hashCode();
     }
 
 }

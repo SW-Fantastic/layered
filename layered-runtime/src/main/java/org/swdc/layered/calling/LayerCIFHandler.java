@@ -20,10 +20,21 @@ public class LayerCIFHandler {
 
     private int[] ffiArgTypes;
 
+    private LayerBufferPool bufferPool;
 
     public LayerCIFHandler(LayerInvoker invoker, LayerFunction function) {
+
+        int coreSize = Runtime.getRuntime().availableProcessors();
+        this.bufferPool = new LayerBufferPool(
+                invoker.getAllocator(),
+                function.getParams().size(),
+                coreSize,
+                coreSize * 2
+        );
+
         this.function = function;
         this.invoker = invoker;
+
     }
 
     /**
@@ -62,13 +73,16 @@ public class LayerCIFHandler {
             }
             this.cifAddress = cifAddr;
             this.ffiArgTypes = argTypes;
-
             return cifAddr;
             
         } finally {
             lock.unlock();
         }
         
+    }
+
+    public void freeParameters(LayerBuffer buffer) {
+        bufferPool.release(buffer);
     }
 
     /**
@@ -84,95 +98,90 @@ public class LayerCIFHandler {
      * @return 转换后的指针数组，每个元素按顺序对应一个函数参数
      * @throws RuntimeException 当 moduleAddress 为 0，或遇到未知的元数据类型时抛出
      */
-    public void transformParameters(LayerBuffer buffer, Object... args) {
-        try {
+    public LayerBuffer allocParameters( Object... args) {
 
-            lock.lock();
-
-            long moduleAddress = invoker.getModuleAddress();
-            if (moduleAddress == 0) {
-                throw new RuntimeException("Module address is null");
-            }
-
-            for (int i = 0; i < function.getParams().size(); i++) {
-                MetaType metaType = function.getParams().get(i);
-                if (metaType == MetaType.INT) {
-
-                    Integer val = null;
-                    if (args[i].getClass() == Boolean.class) {
-                        val = ((Boolean)args[i]) ? 1 : 0;
-                    } else if (args[i].getClass() == Integer.class) {
-                        val = (Integer)args[i];
-                    } else {
-                        val = 0;
-                    }
-                    MemoryManager.writeInt(buffer.getParameterBuf(i).getAddress(), 0, val);
-
-                } else if(metaType == MetaType.FLOAT){
-
-                    Float fval = (Float)args[i];
-                    if (fval == null) {
-                        fval = 0.0f;
-                    }
-                    MemoryManager.writeFloat(buffer.getParameterBuf(i).getAddress(), 0, fval);
-
-                } else if (metaType == MetaType.LONG){
-
-                    Long val = (Long)args[i];
-                    if (val == null) {
-                        val = 0L;
-                    }
-                    MemoryManager.writeLong(buffer.getParameterBuf(i).getAddress(), 0, val);
-
-                } else if (metaType == MetaType.DOUBLE){
-
-                    Double val = (Double)args[i];
-                    if (val == null) {
-                        val = 0D;
-                    }
-                    MemoryManager.writeDouble(buffer.getParameterBuf(i).getAddress(), 0, val);
-
-                } else if (metaType == MetaType.INTPTR_T || metaType == MetaType.SIZE_T) {
-
-                    Long addr = 0L;
-                    if (args[i] instanceof UniquePointer) {
-                        addr = ((UniquePointer<?>)args[i]).getAddress();
-                    } else if (args[i] instanceof OpaquePointer) {
-                        addr = ((OpaquePointer)args[i]).getAddress();
-                    }
-                    MemoryManager.writeAddress(buffer.getParameterBuf(i).getAddress(), 0, addr);
-
-                } else if (metaType == MetaType.SHORT) {
-
-                    Short val = null;
-                    if (args[i] instanceof Short) {
-                        val = (Short) args[i];
-                    } else if (args[i] instanceof Boolean) {
-                        val = ((Boolean) args[i]) ? (short)1 : (short)0;
-                    }
-
-                    MemoryManager.writeShort(buffer.getParameterBuf(i).getAddress(), 0, val);
-
-                } else if (metaType == MetaType.CHAR) {
-
-                    byte val = 0x00;
-                    if (args[i] instanceof Character) {
-                        Character ch = (Character)args[i];
-                        val = (byte) ch.charValue();
-                    } else if (args[i] instanceof Boolean) {
-                        Boolean b = (Boolean)args[i];
-                        val = (byte) (b ? 1 : 0);
-                    }
-                    MemoryManager.writeByte(buffer.getParameterBuf(i).getAddress(), 0, val);
-
-                } else {
-                    throw new RuntimeException("Unknown meta type : " +  metaType);
-                }
-            }
-
-        } finally {
-            lock.unlock();
+        LayerBuffer buffer = bufferPool.borrow();
+        long moduleAddress = invoker.getModuleAddress();
+        if (moduleAddress == 0) {
+            throw new RuntimeException("Module address is null");
         }
+
+        for (int i = 0; i < function.getParams().size(); i++) {
+            MetaType metaType = function.getParams().get(i);
+            if (metaType == MetaType.INT) {
+
+                Integer val = null;
+                if (args[i].getClass() == Boolean.class) {
+                    val = ((Boolean)args[i]) ? 1 : 0;
+                } else if (args[i].getClass() == Integer.class) {
+                    val = (Integer)args[i];
+                } else {
+                    val = 0;
+                }
+                MemoryManager.writeInt(buffer.getParameterBuf(i).getAddress(), 0, val);
+
+            } else if(metaType == MetaType.FLOAT){
+
+                Float fval = (Float)args[i];
+                if (fval == null) {
+                    fval = 0.0f;
+                }
+                MemoryManager.writeFloat(buffer.getParameterBuf(i).getAddress(), 0, fval);
+
+            } else if (metaType == MetaType.LONG){
+
+                Long val = (Long)args[i];
+                if (val == null) {
+                    val = 0L;
+                }
+                MemoryManager.writeLong(buffer.getParameterBuf(i).getAddress(), 0, val);
+
+            } else if (metaType == MetaType.DOUBLE){
+
+                Double val = (Double)args[i];
+                if (val == null) {
+                    val = 0D;
+                }
+                MemoryManager.writeDouble(buffer.getParameterBuf(i).getAddress(), 0, val);
+
+            } else if (metaType == MetaType.INTPTR_T || metaType == MetaType.SIZE_T) {
+
+                Long addr = 0L;
+                if (args[i] instanceof UniquePointer) {
+                    addr = ((UniquePointer<?>)args[i]).unmanaged();
+                } else if (args[i] instanceof OpaquePointer) {
+                    addr = ((OpaquePointer)args[i]).getAddress();
+                }
+                MemoryManager.writeAddress(buffer.getParameterBuf(i).getAddress(), 0, addr);
+
+            } else if (metaType == MetaType.SHORT) {
+
+                Short val = null;
+                if (args[i] instanceof Short) {
+                    val = (Short) args[i];
+                } else if (args[i] instanceof Boolean) {
+                    val = ((Boolean) args[i]) ? (short)1 : (short)0;
+                }
+
+                MemoryManager.writeShort(buffer.getParameterBuf(i).getAddress(), 0, val);
+
+            } else if (metaType == MetaType.CHAR) {
+
+                byte val = 0x00;
+                if (args[i] instanceof Character) {
+                    Character ch = (Character)args[i];
+                    val = (byte) ch.charValue();
+                } else if (args[i] instanceof Boolean) {
+                    Boolean b = (Boolean)args[i];
+                    val = (byte) (b ? 1 : 0);
+                }
+                MemoryManager.writeByte(buffer.getParameterBuf(i).getAddress(), 0, val);
+
+            } else {
+                throw new RuntimeException("Unknown meta type : " +  metaType);
+            }
+        }
+        return buffer;
     }
 
     /**
@@ -224,6 +233,7 @@ public class LayerCIFHandler {
     public void close() {
         try {
             lock.lock();
+            bufferPool.close();
             if (cifAddress != null) {
                 ExternalInvoker.destroyFFICIF(cifAddress);
             }
@@ -231,6 +241,7 @@ public class LayerCIFHandler {
             cifAddress = null;
             function = null;
             ffiArgTypes = null;
+            bufferPool = null;
         } finally {
             lock.unlock();
         }

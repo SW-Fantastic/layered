@@ -347,30 +347,14 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 	jint* argTypes = env->GetIntArrayElements(layerFlags, 0);
 	void** realParams = reinterpret_cast<void**>(paramsAddr);
 
-	/*if (paramsAddr != NULL) {
-		realParams = new void* [paramSize];
-		void** params = reinterpret_cast<void**>(paramsAddr);
-		for (int index = 0; index < paramSize; index++) {
-			if (argTypes[index] == LAYER_ADDRESS) {
-				realParams[index] = &params[index];
-			} else {
-				realParams[index] = params[index];
-			}
-		}
-	} */
 	
 	LayerCall* call = reinterpret_cast<LayerCall*>(cifAddr);
 	ffi_cif* cifPtr = call->cif;
-
-	printf("param 0 - %lld \n", reinterpret_cast<intptr_t>(*realParams));
 
 	void* functionPtr = reinterpret_cast<void*>(functionAddr);
 	void* result = reinterpret_cast<void*>(resultAddr);
 	ffi_call(cifPtr, FFI_FN(functionPtr), result, realParams);
 
-	/*if (realParams != NULL) {
-		delete[] realParams;
-	}*/
 
 }
 

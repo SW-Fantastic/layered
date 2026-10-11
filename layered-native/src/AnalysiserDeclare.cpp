@@ -184,7 +184,9 @@ RecordTypeDescriptor::RecordTypeDescriptor(
 	std::string name, 
 	std::string namespacePath,
 	bool isConst, 
-	bool isVoliate
+	bool isVoliate,
+	bool movable, 
+	bool hasNoArgsCtor
 ) : TypeDescriptor(name, namespacePath) {
 	this->isConst = isConst;
 	this->isVolatile = isVoliate;
@@ -200,7 +202,12 @@ std::string RecordTypeDescriptor::getTypeStr() {
 
 RecordTypeDescriptor* RecordTypeDescriptor::copy() {
 	
-	RecordTypeDescriptor* copied = new RecordTypeDescriptor(this->getName(), this->getNamespace(),this->isConst, this->isVolatile);
+	RecordTypeDescriptor* copied = new RecordTypeDescriptor(
+		this->getName(), this->getNamespace(),
+		this->isConst, this->isVolatile,
+		this->movable,this->hasNoArgCtor
+	);
+
 	copied->fields = this->fields;
 	copied->publicMethods = this->publicMethods;
 	copied->overrideableMethods = this->overrideableMethods;
@@ -230,7 +237,9 @@ llvm::json::Object RecordTypeDescriptor::getJson() {
 		{ "const", this->isConst },
 		{ "volatile", this->isVolatile },
 		{ "type", this->getTypeStr() },
-		{ "fields", std::move(fields) }
+		{ "fields", std::move(fields) },
+		{ "movable", this->movable },
+		{ "hasNoArgsCtor", this->hasNoArgCtor }
 	};
 
 }

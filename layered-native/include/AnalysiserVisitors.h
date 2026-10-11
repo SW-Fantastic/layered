@@ -19,6 +19,9 @@ public:
 	static bool isStructType(clang::QualType type);
 	static bool isClassType(clang::QualType type);
 
+	static bool haveDefaultConstructor(clang::RecordDecl* decl);
+	static bool isRecordMovable(clang::RecordDecl* decl);
+
 };
 
 class MetaParser {

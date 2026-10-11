@@ -131,7 +131,7 @@ public class TypeUtils {
             ParameterizedType rawParamType = (ParameterizedType) parameterizedType.getType();
             Class<?> rawType = (Class<?>)rawParamType.getRawType();
 
-            if (rawType == PtrPointer.class) {
+            if (rawType == PtrPointer.class || rawType == UniquePointer.class) {
 
                 Stack<AnnotatedType> ptrStack = new Stack<>();
                 AnnotatedType argType = parameterizedType.getAnnotatedActualTypeArguments()[0];

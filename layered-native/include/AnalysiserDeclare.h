@@ -160,13 +160,14 @@ class RecordTypeDescriptor : public TypeDescriptor<RecordTypeDescriptor>{
 
 public:
 
-	RecordTypeDescriptor(std::string name, std::string namespacePath,bool isConst, bool isVoliate);
+	RecordTypeDescriptor(std::string name, std::string namespacePath,bool isConst, bool isVoliate, bool movable, bool hasNoArgsCtor);
 
 	DescriptorType getType() override;
 	std::string getTypeStr() override;
 	RecordTypeDescriptor* copy() override;
 	void updateField(std::string fieldName, std::string typeId);
 	llvm::json::Object getJson();
+
 
 protected:
 
@@ -175,6 +176,11 @@ protected:
 	std::unordered_map<std::string, std::string> constructors;
 	std::unordered_map<std::string, std::string> publicMethods;
 	std::unordered_map<std::string, std::string> overrideableMethods;
+
+	// can we move it into heap safety
+	bool movable;
+	// does it have default constructor
+	bool hasNoArgCtor;
 
 };
 

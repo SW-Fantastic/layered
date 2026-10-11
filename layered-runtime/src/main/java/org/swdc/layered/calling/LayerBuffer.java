@@ -18,8 +18,6 @@ public class LayerBuffer {
 
     private int paramCount;
 
-    private ReentrantLock lock = new ReentrantLock();
-
     public LayerBuffer(Allocator allocator, int parameterCount) {
 
         if (parameterCount == 0) {

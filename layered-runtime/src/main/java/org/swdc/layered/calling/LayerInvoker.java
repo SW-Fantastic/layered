@@ -37,20 +37,12 @@ public class LayerInvoker {
     }
 
     public LayerCIFHandler getCIFHandler(Method method) {
-        try {
-            lock.readLock().lock();
 
-            if (handlerMap.containsKey(method)) {
-                return handlerMap.get(method);
-            }
-            LayerFunction function = lookupFunction(method);
-            LayerCIFHandler cifHandler = new LayerCIFHandler(this, function);
-            handlerMap.put(method, cifHandler);
-            return cifHandler;
+        return handlerMap.computeIfAbsent(method, k -> {
+            LayerFunction function = lookupFunction(k);
+            return new LayerCIFHandler(this, function);
+        });
 
-        } finally {
-            lock.readLock().unlock();
-        }
     }
     
     /**

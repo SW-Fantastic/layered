@@ -20,6 +20,28 @@ public class RecordMetaType extends AbstractMetaType {
         return MetaType.INTPTR_T;
     }
 
+    public void setMovable(boolean movable) {
+        this.modifier = this.modifier & ~Modifiers.IsMovable;
+        if (movable) {
+            this.modifier = this.modifier | Modifiers.IsMovable;
+        }
+    }
+
+    public boolean isMovable() {
+        return (this.modifier & Modifiers.IsMovable) != 0;
+    }
+
+    public void setHasNoArgsCtor(boolean hasNoArgsCtor) {
+        this.modifier = this.modifier & ~Modifiers.HasNoArgsCtor;
+        if (hasNoArgsCtor) {
+            this.modifier = this.modifier | Modifiers.HasNoArgsCtor;
+        }
+    }
+
+    public boolean isHasNoArgsCtor() {
+        return (this.modifier & Modifiers.HasNoArgsCtor) != 0;
+    }
+
     @Override
     public String getMangledName() {
 

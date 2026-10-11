@@ -86,6 +86,62 @@ bool ParserHelper::isClassType(clang::QualType type) {
 
 }
 
+bool ParserHelper::haveDefaultConstructor(clang::RecordDecl* decl) {
+	
+	if (!decl->isCompleteDefinition()) {
+		// incomplete definition，do not support new operator
+		return false;
+	}
+
+	clang::CXXRecordDecl* cxxDecl = llvm::dyn_cast<clang::CXXRecordDecl>(decl);
+	if (!cxxDecl) {
+		// C struct，support new operator
+		return true;
+	}
+
+	if (cxxDecl->isAbstract()) {
+		// abstruct class, does not support new operator
+		return false;
+	}
+
+	for (const auto ctor : cxxDecl->ctors()) {
+		if (ctor->isDefaultConstructor()) {
+			// the class has default ctor, check does it accessable.
+			return (!ctor->isDeleted() && ctor->getAccess() == clang::AS_public);
+		}
+	}
+
+	return false;
+
+}
+
+bool ParserHelper::isRecordMovable(clang::RecordDecl* decl) {
+	
+	if (!decl->isCompleteDefinition()) {
+		return false;
+	}
+	clang::CXXRecordDecl* cxxDecl = llvm::dyn_cast<clang::CXXRecordDecl>(decl);
+	if (!cxxDecl) {
+		// c struct , moveable
+		return true;
+	}
+
+	if (cxxDecl->isAggregate()) {
+		// c struct include some c++ fields
+		return true;
+	}
+
+	for (const auto ctor : cxxDecl->ctors()) {
+		if (ctor->isMoveConstructor() || ctor->isCopyConstructor()) {
+			if (!ctor->isDeleted() && ctor->getAccess() == clang::AS_public) {
+				return true;
+			}
+		}
+	}
+
+	return true;
+}
+
 std::string ParserHelper::getScope(clang::QualType type) {
 
 
@@ -301,7 +357,12 @@ std::string StructParser::parse(ClangType rawType) {
 		return "";
 	}
 
-	RecordTypeDescriptor* result = new RecordTypeDescriptor(qName, nsName, qType.isConstQualified(), qType.isVolatileQualified());
+	RecordTypeDescriptor* result = new RecordTypeDescriptor(
+		qName, nsName,
+		qType.isConstQualified(), qType.isVolatileQualified(),
+		ParserHelper::isRecordMovable(recordDecl),
+		ParserHelper::haveDefaultConstructor(recordDecl)
+	);
 
 	for (const clang::FieldDecl* fieldDecl : recordDecl->fields()) {
 		
