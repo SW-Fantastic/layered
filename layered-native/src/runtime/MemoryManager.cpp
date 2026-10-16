@@ -88,6 +88,26 @@ JNIEXPORT jint JNICALL Java_org_swdc_layered_MemoryManager_sizeOfShort
 
 /*
  * Class:     org_swdc_layered_MemoryManager
+ * Method:    sizeOfLongLong
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_org_swdc_layered_MemoryManager_sizeOfLongLong
+(JNIEnv*, jclass) {
+	return sizeof(long long);
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    sizeOfSizeT
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_org_swdc_layered_MemoryManager_sizeOfSizeT
+(JNIEnv*, jclass) {
+	return sizeof(size_t);
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
  * Method:    malloc
  * Signature: (I)J
  */
@@ -850,3 +870,159 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_MemoryManager_writeByteArray
 
 }
 
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    readSizeT
+ * Signature: (JI)J
+ */
+JNIEXPORT jlong JNICALL Java_org_swdc_layered_MemoryManager_readSizeT
+(JNIEnv*, jclass, jlong addr, jint index) {
+
+	if (addr == NULL || index < 0) {
+		return 0;
+	}
+
+	size_t* sizetPtr = reinterpret_cast<size_t*>(addr);
+	return sizetPtr[index];
+
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    readSizeTArray
+ * Signature: (JI)[J
+ */
+JNIEXPORT jlongArray JNICALL Java_org_swdc_layered_MemoryManager_readSizeTArray
+(JNIEnv* env, jclass, jlong addr, jint size) {
+
+	if (addr == NULL || size <= 0) {
+		return NULL;
+	}
+
+	size_t* buf = reinterpret_cast<size_t*>(addr);
+	jlong* arr = new jlong[size];
+	for (int index = 0; index < size; index++) {
+		arr[index] = buf[index];
+	}
+
+	jlongArray result = env->NewLongArray(size);
+	env->SetLongArrayRegion(result,0,size,arr);
+	delete[] arr;
+
+	return result;
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    writeSizeT
+ * Signature: (JIJ)V
+ */
+JNIEXPORT void JNICALL Java_org_swdc_layered_MemoryManager_writeSizeT
+(JNIEnv*, jclass, jlong addr, jint index, jlong value) {
+
+	if (addr == NULL || index < 0) {
+		return;
+	}
+
+	size_t* buf = reinterpret_cast<size_t*>(addr);
+	buf[index] = static_cast<size_t>(value);
+
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    writeSizeTArray
+ * Signature: (J[J)V
+ */
+JNIEXPORT void JNICALL Java_org_swdc_layered_MemoryManager_writeSizeTArray
+(JNIEnv* env, jclass, jlong addr, jlongArray array) {
+
+	if (addr == NULL || array == nullptr) {
+		return;
+	}
+
+	size_t* buf = reinterpret_cast<size_t*>(addr);
+	int size = env->GetArrayLength(array);
+	
+	jboolean cpyFlag;
+	jlong* arrayBuf = env->GetLongArrayElements(array, &cpyFlag);
+
+	for (int index = 0; index < size; index++) {
+		buf[index] = static_cast<size_t>(arrayBuf[index]);
+	}
+	env->ReleaseLongArrayElements(array, arrayBuf, cpyFlag);
+
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    readLongLong
+ * Signature: (JI)J
+ */
+JNIEXPORT jlong JNICALL Java_org_swdc_layered_MemoryManager_readLongLong
+(JNIEnv*, jclass, jlong addr, jint index) {
+
+	if (addr == NULL || index < 0) {
+		return 0;
+	}
+	long long* ptr = reinterpret_cast<long long*>(addr);
+	return ptr[index];
+
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    readLongLongArray
+ * Signature: (JI)[J
+ */
+JNIEXPORT jlongArray JNICALL Java_org_swdc_layered_MemoryManager_readLongLongArray
+(JNIEnv* env, jclass, jlong addr, jint size) {
+
+	if (addr == NULL || size <= 0) {
+		return nullptr;
+	}
+
+	long long* ptr = reinterpret_cast<long long*>(addr);
+	jlongArray array = env->NewLongArray(size);
+	env->SetLongArrayRegion(array, 0, size, ptr);
+	return array;
+
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    writeLongLong
+ * Signature: (JIJ)V
+ */
+JNIEXPORT void JNICALL Java_org_swdc_layered_MemoryManager_writeLongLong
+(JNIEnv*, jclass, jlong addr, jint index, jlong val) {
+
+	if (addr == NULL || index < 0) {
+		return;
+	}
+
+	long long* ptr = reinterpret_cast<long long*>(addr);
+	ptr[index] = val;
+
+}
+
+/*
+ * Class:     org_swdc_layered_MemoryManager
+ * Method:    writeLongLongArray
+ * Signature: (J[J)V
+ */
+JNIEXPORT void JNICALL Java_org_swdc_layered_MemoryManager_writeLongLongArray
+(JNIEnv* env, jclass, jlong addr, jlongArray arr) {
+
+	if (addr == NULL || arr == NULL) {
+		return;
+	}
+
+	long long* ptr = reinterpret_cast<long long*>(addr);
+	int size = env->GetArrayLength(arr);
+	jboolean cpyFlg;
+	jlong* arrBuf = env->GetLongArrayElements(arr, &cpyFlg);
+	memcpy(ptr, arrBuf, size);
+	env->ReleaseLongArrayElements(arr, arrBuf, cpyFlg);
+
+}

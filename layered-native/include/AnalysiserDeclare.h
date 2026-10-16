@@ -26,6 +26,13 @@ enum DescriptorType {
 
 };
 
+enum DescriptorState {
+
+	PROCESSING = 0,
+	RESOLVED   = 1
+
+};
+
 
 class BaseTypeDescriptor {
 
@@ -46,7 +53,6 @@ protected:
 
 	bool isConst = false;
 	bool isVolatile = false;
-
 
 };
 
@@ -160,7 +166,7 @@ class RecordTypeDescriptor : public TypeDescriptor<RecordTypeDescriptor>{
 
 public:
 
-	RecordTypeDescriptor(std::string name, std::string namespacePath,bool isConst, bool isVoliate, bool movable, bool hasNoArgsCtor);
+	RecordTypeDescriptor(std::string name, std::string namespacePath,bool isConst, bool isVoliate, bool movable, bool hasNoArgsCtor, bool completeType);
 
 	DescriptorType getType() override;
 	std::string getTypeStr() override;
@@ -168,6 +174,8 @@ public:
 	void updateField(std::string fieldName, std::string typeId);
 	llvm::json::Object getJson();
 
+	void updateState(DescriptorState state);
+	DescriptorState getState();
 
 protected:
 
@@ -178,9 +186,13 @@ protected:
 	std::unordered_map<std::string, std::string> overrideableMethods;
 
 	// can we move it into heap safety
-	bool movable;
+	bool movable = false;
 	// does it have default constructor
-	bool hasNoArgCtor;
+	bool hasNoArgCtor = false;
+	// is complete type
+	bool completeType = false;
+	// clang decl
+	DescriptorState state = DescriptorState::RESOLVED;
 
 };
 

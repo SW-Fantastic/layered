@@ -31,6 +31,14 @@ extern "C" {
 
 	const int LAYER_VOID = 10;
 
+	const int LAYER_LONG_LONG = 11;
+
+	const int LAYER_SIZE_T = 12;
+
+	const int LAYER_SHORT = 13;
+
+	const int LAYER_USHORT = 14;
+
 	typedef struct CallHandler {
 		ffi_type** types;
 		ffi_cif* cif;

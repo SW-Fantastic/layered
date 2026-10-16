@@ -42,6 +42,17 @@ public class RecordMetaType extends AbstractMetaType {
         return (this.modifier & Modifiers.HasNoArgsCtor) != 0;
     }
 
+    public void setCompleteType(boolean completeType) {
+        this.modifier = this.modifier & ~Modifiers.IsCompleteType;
+        if (completeType) {
+            this.modifier = this.modifier | Modifiers.IsCompleteType;
+        }
+    }
+
+    public boolean isCompleteType() {
+        return (this.modifier & Modifiers.IsCompleteType) != 0;
+    }
+
     @Override
     public String getMangledName() {
 

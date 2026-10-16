@@ -43,6 +43,11 @@ ffi_type* getByLayerFlag(int layerTypeFlag) {
 		return &ffi_type_slong;
 	case LAYER_ULONG:
 		return &ffi_type_ulong;
+	case LAYER_LONG_LONG:
+		return &ffi_type_sint64;
+	case LAYER_SIZE_T:
+		return sizeof(size_t) == sizeof(long long) ? 
+			&ffi_type_sint64 : &ffi_type_sint32;
 	case LAYER_FLOAT:
 		return &ffi_type_float;
 	case LAYER_DOUBLE:
@@ -55,7 +60,12 @@ ffi_type* getByLayerFlag(int layerTypeFlag) {
 		return &ffi_type_void;
 	case LAYER_BOOL:
 		return &ffi_type_uint;
+	case LAYER_SHORT:
+		return &ffi_type_sshort;
+	case LAYER_USHORT:
+		return &ffi_type_ushort;
 	}
+
 	return NULL;
 }
 
@@ -343,10 +353,8 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 	}
 
 
-	int paramSize = env->GetArrayLength(layerFlags);
 	jint* argTypes = env->GetIntArrayElements(layerFlags, 0);
 	void** realParams = reinterpret_cast<void**>(paramsAddr);
-
 	
 	LayerCall* call = reinterpret_cast<LayerCall*>(cifAddr);
 	ffi_cif* cifPtr = call->cif;
@@ -354,6 +362,7 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 	void* functionPtr = reinterpret_cast<void*>(functionAddr);
 	void* result = reinterpret_cast<void*>(resultAddr);
 	ffi_call(cifPtr, FFI_FN(functionPtr), result, realParams);
+	env->ReleaseIntArrayElements(layerFlags, argTypes, 0);
 
 
 }

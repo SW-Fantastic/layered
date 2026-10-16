@@ -44,4 +44,7 @@ public class RenderableFunction {
         return getReturnType().getRawType() != MetaType.VOID;
     }
 
+    public FunctionMetaType getFunctionMetaType() {
+        return functionMetaType;
+    }
 }

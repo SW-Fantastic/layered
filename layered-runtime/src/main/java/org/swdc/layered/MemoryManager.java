@@ -18,6 +18,10 @@ public class MemoryManager {
 
     public static native int sizeOfShort();
 
+    public static native int sizeOfLongLong();
+
+    public static native int sizeOfSizeT();
+
     public static native int sizeOfBoolean();
 
     public static native long malloc(int size);
@@ -99,6 +103,23 @@ public class MemoryManager {
     public static native void writeByte(long address, int index, byte value);
 
     public static native void writeByteArray(long address, int dstOffset, byte[] values, int srcOffset, int size);
+
+    public static native long readSizeT(long address, int index);
+
+    public static native long[] readSizeTArray(long address, int size);
+
+    public static native void writeSizeT(long address, int index, long value);
+
+    public static native void writeSizeTArray(long address, long[] values);
+
+    public static native long readLongLong(long address, int index);
+
+    public static native long[] readLongLongArray(long address, int size);
+
+    public static native void writeLongLong(long address, int index, long value);
+
+    public static native void writeLongLongArray(long address, long[] values);
+
 
 
 }

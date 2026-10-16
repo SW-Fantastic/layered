@@ -137,7 +137,7 @@ public class DescriptorsFactory {
             } else if (typeName.equals("unsigned char") || typeName.equals("char")) {
                 builtIn = new BuiltInMetaType(MetaType.CHAR);
             } else if (typeName.equals("unsigned long long") ||  typeName.equals("long long")) {
-                builtIn = new BuiltInMetaType(MetaType.LONG);
+                builtIn = new BuiltInMetaType(MetaType.LONG_LONG);
             } else if (typeName.equals("float")) {
                 builtIn = new BuiltInMetaType(MetaType.FLOAT);
             } else if (typeName.equals("double")) {
@@ -174,6 +174,7 @@ public class DescriptorsFactory {
             recordMeta.setVolatile(recordDescriptor.getVolatile());
             recordMeta.setMovable(recordDescriptor.isMovable());
             recordMeta.setHasNoArgsCtor(recordDescriptor.isHasNoArgsCtor());
+            recordMeta.setCompleteType(recordDescriptor.isCompleteType());
 
             Map<String, AbstractMetaType> metaFields = new HashMap<>();
             for (Map.Entry<String,String> field :  recordDescriptor.getFields().entrySet()) {
@@ -280,6 +281,11 @@ public class DescriptorsFactory {
             throw new IllegalArgumentException("Unknown field name: " + fieldName);
         }
 
+        PointerMetaType paramType = new PointerMetaType();
+        paramType.setTargetType(record);
+        paramType.setConst(false);
+        paramType.setVolatile(false);
+
         AbstractMetaType fieldType = record.getFields().get(fieldName);
 
         FunctionMetaType functionMeta = new FunctionMetaType();
@@ -292,7 +298,7 @@ public class DescriptorsFactory {
         functionMeta.setReturnType(resolvedBuiltIn.get("void"));
         functionMeta.setConst(fieldType.isConst());
         functionMeta.setVolatile(fieldType.isVolatile());
-        functionMeta.setParameterTypes(Arrays.asList(record, fieldType));
+        functionMeta.setParameterTypes(Arrays.asList(paramType, fieldType));
         if (accessors.containsKey(functionMeta.getMangledName())) {
             FunctionMetaType exists = accessors.get(functionMeta.getMangledName());
             exists.merge(functionMeta);
@@ -324,6 +330,11 @@ public class DescriptorsFactory {
             throw new IllegalArgumentException("Unknown field name: " + fieldName);
         }
 
+        PointerMetaType paramType = new PointerMetaType();
+        paramType.setTargetType(record);
+        paramType.setConst(false);
+        paramType.setVolatile(false);
+
         AbstractMetaType fieldType = record.getFields().get(fieldName);
 
         FunctionMetaType functionMeta = new FunctionMetaType();
@@ -336,7 +347,7 @@ public class DescriptorsFactory {
         functionMeta.setReturnType(fieldType);
         functionMeta.setConst(fieldType.isConst());
         functionMeta.setVolatile(fieldType.isVolatile());
-        functionMeta.setParameterTypes(Arrays.asList(record));
+        functionMeta.setParameterTypes(Arrays.asList(paramType));
         if (accessors.containsKey(functionMeta.getMangledName())) {
             FunctionMetaType exists = accessors.get(functionMeta.getMangledName());
             exists.merge(functionMeta);
@@ -345,6 +356,83 @@ public class DescriptorsFactory {
         accessors.put(functionMeta.getMangledName(), functionMeta);
         return functionMeta;
 
+    }
+    
+    /**
+     * 获取（或创建）指定记录类型的默认构造函数访问器函数元信息。
+     * <p>
+     * 根据记录类型构造一个用于创建该记录实例的无参构造函数访问器：
+     * 函数名为 "ctor_" + 记录名，命名空间为 "记录命名空间::记录名"，
+     * 返回类型为该记录类型本身，参数列表为空，
+     * 并继承记录类型的 const / volatile 限定。
+     * 若已存在相同修饰名（mangled name）的访问器，则将其与新建元信息合并后返回既有实例。
+     *
+     * @param record 目标记录的元类型，其必须声明了无参构造函数
+     * @return 该记录默认构造函数对应的函数元类型；若访问器已存在则返回合并后的既有实例
+     * @throws IllegalArgumentException 当记录未声明无参构造函数时抛出
+     */
+    public FunctionMetaType getRecordDefaultCtor(RecordMetaType record) {
+        
+        if (!record.isHasNoArgsCtor()) {
+            throw new IllegalArgumentException("No record has no args ctor");
+        }
+
+        PointerMetaType pointerMeta = new PointerMetaType();
+        pointerMeta.setVolatile(false);
+        pointerMeta.setConst(false);
+        pointerMeta.setTargetType(record);
+        
+        FunctionMetaType functionMeta = new FunctionMetaType();
+        functionMeta.setName(record.getName() + "_ctor");
+        functionMeta.setNamespace(record.getNamespace());
+        functionMeta.setReturnType(pointerMeta);
+        functionMeta.setConst(record.isConst());
+        functionMeta.setVolatile(record.isVolatile());
+        functionMeta.setParameterTypes(Collections.emptyList());
+        if (accessors.containsKey(functionMeta.getMangledName())) {
+            FunctionMetaType exists = accessors.get(functionMeta.getMangledName());
+            exists.merge(functionMeta);
+            return exists;
+        }
+        accessors.put(functionMeta.getMangledName(), functionMeta);
+        return functionMeta;
+        
+    }
+    
+    /**
+     * 获取（或创建）指定记录类型的析构函数访问器函数元信息。
+     * <p>
+     * 根据记录类型构造一个用于销毁该记录实例的析构函数访问器：
+     * 函数名为 "dtor_" + 记录名，命名空间为 "记录命名空间::记录名"，
+     * 返回类型为 void，参数列表为该记录类型本身（对应隐式的 this 指针），
+     * 并继承记录类型的 const / volatile 限定。
+     * 若已存在相同修饰名（mangled name）的访问器，则将其与新建元信息合并后返回既有实例。
+     *
+     * @param record 目标记录的元类型
+     * @return 该记录析构函数对应的函数元类型；若访问器已存在则返回合并后的既有实例
+     */
+    public FunctionMetaType getRecordDtor(RecordMetaType record) {
+
+        PointerMetaType pointerMeta = new PointerMetaType();
+        pointerMeta.setTargetType(record);
+        pointerMeta.setConst(false);
+        pointerMeta.setVolatile(false);
+
+        FunctionMetaType functionMeta = new FunctionMetaType();
+        functionMeta.setName(record.getName() + "_dtor");
+        functionMeta.setNamespace(record.getNamespace());
+        functionMeta.setReturnType(resolvedBuiltIn.get("void"));
+        functionMeta.setConst(record.isConst());
+        functionMeta.setVolatile(record.isVolatile());
+        functionMeta.setParameterTypes(Arrays.asList(pointerMeta));
+        if (accessors.containsKey(functionMeta.getMangledName())) {
+            FunctionMetaType exists = accessors.get(functionMeta.getMangledName());
+            exists.merge(functionMeta);
+            return exists;
+        }
+        accessors.put(functionMeta.getMangledName(), functionMeta);
+        return functionMeta;
+        
     }
 
 

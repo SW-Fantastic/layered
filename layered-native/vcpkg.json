@@ -16,6 +16,10 @@
     "zlib",
     "zstd",
     "libffi",
-    "mimalloc"
+    {
+      "name": "mimalloc",
+      "default-features": false,
+      "features": [ ]
+    }
   ]
 }

@@ -66,50 +66,78 @@ BaseTypeDescriptor* AnalysiserContext::getById(std::string id) {
 
 }
 
-void AnalysiserContext::pushPointerType(PointerTypeDescriptor* rec) {
+PointerTypeDescriptor* AnalysiserContext::pushPointerType(PointerTypeDescriptor* rec) {
 
 	if (!rec) {
-		return;
+		return nullptr;
 	}
 
 	std::string key = rec->getId();
 	if (this->pointerDesc.count(key)) {
 		PointerTypeDescriptor* target = this->pointerDesc.at(key);
-		delete target;
+		delete rec;
+		return target;
 	}
 	this->pointerDesc.insert_or_assign(key, rec);
+	return rec;
 
 }
 
-void AnalysiserContext::pushStructType(RecordTypeDescriptor* rec) {
+RecordTypeDescriptor* AnalysiserContext::pushStructType(RecordTypeDescriptor* rec) {
 
 	if (!rec) {
-		return;
+		return nullptr;
 	}
 
 	std::string key = rec->getId();
 	if (this->structDesc.count(key)) {
 		RecordTypeDescriptor* target = this->structDesc.at(key);
-		delete target;
+		delete rec;
+		return target;
 	}
 	this->structDesc.insert_or_assign(key, rec);
+	return rec;
 }
 
-void AnalysiserContext::pushBuiltType(BuiltInDescriptor* desc) {
+BuiltInDescriptor* AnalysiserContext::pushBuiltType(BuiltInDescriptor* desc) {
 
 	if (!desc) {
-		return;
+		return nullptr;
 	}
 
 	BuiltInDescriptor* cDesc = desc->copyConst();
 	BuiltInDescriptor* vDesc = desc->copyVolatile();
 	BuiltInDescriptor* cvDesc = desc->copyConstVolatile();
 
-	builtInDesc.insert_or_assign(desc->getId(), desc);
-	builtInDesc.insert_or_assign(cDesc->getId(), cDesc);
-	builtInDesc.insert_or_assign(vDesc->getId(), vDesc);
-	builtInDesc.insert_or_assign(cvDesc->getId(), cvDesc);
-	builtInSymbosMap.insert_or_assign(desc->getName(), desc->getSymbol());
+	if (builtInDesc.count(cDesc->getId())) {
+		delete cDesc;
+	} else {
+		builtInDesc.insert_or_assign(cDesc->getId(), cDesc);
+	}
+
+	if (builtInDesc.count(vDesc->getId())) {
+		delete vDesc;
+	} else {
+		builtInDesc.insert_or_assign(vDesc->getId(), vDesc);
+	}
+
+	if (builtInDesc.count(cvDesc->getId())) {
+		delete cvDesc;
+	} else {
+		builtInDesc.insert_or_assign(cvDesc->getId(), cvDesc);
+	}
+
+	BuiltInDescriptor* result = nullptr;
+	if (builtInDesc.count(desc->getId())) {
+		result = builtInDesc.at(desc->getId());
+		delete desc;
+	} else {
+		builtInDesc.insert_or_assign(desc->getId(), desc);
+		result = desc;
+	}
+
+	builtInSymbosMap.insert_or_assign(result->getName(), result->getSymbol());
+	return result;
 
 }
 
@@ -132,6 +160,12 @@ int AnalysiserContext::existById(std::string id) {
 
 FunctionDescriptor* AnalysiserContext::put(FunctionDescriptor* funcType) {
 
+	if (functionDesc.count(funcType->getId())) {
+		FunctionDescriptor* result = this->functionDesc.at(funcType->getId());
+		delete funcType;
+		return result;
+	}
+
 	this->functionDesc.insert_or_assign(funcType->getId(), funcType);
 	return funcType;
 
@@ -143,7 +177,7 @@ PointerTypeDescriptor* AnalysiserContext::put(PointerTypeDescriptor* ptrType) {
 		return nullptr;
 	}
 
-	this->pushPointerType(ptrType);
+	ptrType = this->pushPointerType(ptrType);
 	return ptrType;
 
 }
@@ -154,7 +188,7 @@ RecordTypeDescriptor* AnalysiserContext::put(RecordTypeDescriptor* recType) {
 		return nullptr;
 	}
 
-	this->pushStructType(recType);
+	recType = this->pushStructType(recType);
 	if (recType->hasAnyModifier()) {
 		this->pushStructType(recType->copyRaw());
 	}
@@ -217,6 +251,18 @@ void AnalysiserContext::clear() {
 
 	this->builtInDesc.clear();
 	this->builtInSymbosMap.clear();
+
+}
+
+std::vector<RecordTypeDescriptor*> AnalysiserContext::getStructs() {
+	
+	std::vector<RecordTypeDescriptor*> values;
+	values.reserve(this->structDesc.size());
+	
+	for (const auto& pair : this->structDesc) {
+		values.push_back(pair.second);
+	}
+	return values;
 
 }
 

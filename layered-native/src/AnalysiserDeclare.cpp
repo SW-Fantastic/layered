@@ -21,7 +21,11 @@ std::string BaseTypeDescriptor::getId() {
 	else if (this->isConst) {
 		cv = "[C]";
 	}
-	return cv + ((this->nsName.empty()) ? this->name : this->nsName + SPLITER + this->name);
+	std::string ns = this->getNamespace();
+	if (!ns.empty() && !ns.ends_with(SPLITER)) {
+		ns = ns + SPLITER;
+	}
+	return cv + ns + name;
 }
 
 std::string BaseTypeDescriptor::getName() {
@@ -126,9 +130,12 @@ std::string FunctionDescriptor::getId() {
 		result = "@" + generateParamSymbol(result);
 	}
 
-	return "(" + this->returnTypeId + ")" + (
-		this->getNamespace().empty() ? "" : this->getNamespace() + "::"
-		) + this->getName() + result;
+	std::string ns = this->getNamespace();
+	if (!ns.empty() && !ns.ends_with("::")) {
+		ns = ns + "::";
+	}
+
+	return "(" + this->returnTypeId + ")" + ns + this->getName() + result;
 }
 
 std::string FunctionDescriptor::generateParamSymbol(std::string paramStr) {
@@ -186,14 +193,28 @@ RecordTypeDescriptor::RecordTypeDescriptor(
 	bool isConst, 
 	bool isVoliate,
 	bool movable, 
-	bool hasNoArgsCtor
+	bool hasNoArgsCtor,
+	bool completeType
 ) : TypeDescriptor(name, namespacePath) {
+	
 	this->isConst = isConst;
 	this->isVolatile = isVoliate;
+	this->movable = movable;
+	this->hasNoArgCtor = hasNoArgsCtor;
+	this->completeType = completeType;
+
 }
 
 DescriptorType RecordTypeDescriptor::getType() {
 	return DescriptorType::RECORD;
+}
+
+void RecordTypeDescriptor::updateState(DescriptorState state) {
+	this->state = state;
+}
+
+DescriptorState RecordTypeDescriptor::getState() {
+	return this->state;
 }
 
 std::string RecordTypeDescriptor::getTypeStr() {
@@ -205,12 +226,14 @@ RecordTypeDescriptor* RecordTypeDescriptor::copy() {
 	RecordTypeDescriptor* copied = new RecordTypeDescriptor(
 		this->getName(), this->getNamespace(),
 		this->isConst, this->isVolatile,
-		this->movable,this->hasNoArgCtor
+		this->movable,this->hasNoArgCtor,
+		this->completeType
 	);
 
 	copied->fields = this->fields;
 	copied->publicMethods = this->publicMethods;
 	copied->overrideableMethods = this->overrideableMethods;
+	copied->state = this->state;
 	return copied;
 
 }
@@ -220,7 +243,7 @@ void RecordTypeDescriptor::updateField(std::string fieldName, std::string typeId
 	if (fieldName.empty() || typeId.empty()) {
 		return;
 	}
-	this->fields.emplace(fieldName, typeId);
+	this->fields.insert_or_assign(fieldName, typeId);
 }
 
 llvm::json::Object RecordTypeDescriptor::getJson() {
@@ -239,7 +262,8 @@ llvm::json::Object RecordTypeDescriptor::getJson() {
 		{ "type", this->getTypeStr() },
 		{ "fields", std::move(fields) },
 		{ "movable", this->movable },
-		{ "hasNoArgsCtor", this->hasNoArgCtor }
+		{ "hasNoArgsCtor", this->hasNoArgCtor },
+		{ "completeType", this->completeType }
 	};
 
 }

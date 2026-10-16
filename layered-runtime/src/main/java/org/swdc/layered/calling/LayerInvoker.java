@@ -4,7 +4,7 @@ import org.swdc.layered.ExternalInvoker;
 import org.swdc.layered.LayerFunction;
 import org.swdc.layered.LayerMetadata;
 import org.swdc.layered.pointers.Allocator;
-import org.swdc.layered.types.Symbol;
+import org.swdc.layered.types.*;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -22,6 +22,7 @@ public class LayerInvoker {
     private Allocator allocator;
 
     private Map<Method, Long> methodAddressMap = new ConcurrentHashMap<>();
+    private Map<Method, String> methodSymbolMap = new ConcurrentHashMap<>();
     private Map<Method, LayerCIFHandler> handlerMap = new ConcurrentHashMap<>();
 
     private ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -64,7 +65,11 @@ public class LayerInvoker {
             if (method == null) {
                 throw new IllegalArgumentException("Cannot lookup null method");
             }
-            String mangledName = generateMangledName(method);
+
+            String mangledName = methodSymbolMap.get(method);
+            if (mangledName == null) {
+                mangledName = generateMangledName(method);
+            }
             if (metadata.getSymbols().containsKey(mangledName)) {
                 return metadata.getSymbols().get(mangledName);
             }
@@ -188,8 +193,6 @@ public class LayerInvoker {
     public String generateMangledName(Method method) {
 
         String returnTypeSymbol = TypeUtils.getTypeSymbol(method.getAnnotatedReturnType(), method) ;
-        returnTypeSymbol = "(" +  returnTypeSymbol + ")";
-
 
         StringJoiner joiner = new StringJoiner(",");
         for (int index = 0; index < method.getParameterCount(); index++) {
@@ -201,9 +204,38 @@ public class LayerInvoker {
         String paramList = "@" + joiner;
         Symbol symbol = method.getAnnotation(Symbol.class);
         if (symbol != null) {
-            return returnTypeSymbol + symbol.value() + paramList;
+            return "(" + returnTypeSymbol + ")" + symbol.value() + paramList;
         }
-        return returnTypeSymbol + method.getName() + paramList;
+
+        Constructor ctor = method.getDeclaredAnnotation(Constructor.class);
+        if (ctor != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    ctor.value()
+            ) + "_ctor" + paramList;
+        }
+
+        Destructor dtor = method.getDeclaredAnnotation(Destructor.class);
+        if (dtor != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    dtor.value()
+            ) + "_dtor" + paramList;
+        }
+
+        FieldGetter getter = method.getDeclaredAnnotation(FieldGetter.class);
+        if (getter != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    getter.type()
+            ) + "::get_" + getter.field() + paramList;
+        }
+
+        FieldSetter setter = method.getDeclaredAnnotation(FieldSetter.class);
+        if (setter != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    setter.type()
+            ) + "::set_" + setter.field() + paramList;
+        }
+
+        return "(" + returnTypeSymbol + ")"  + method.getName() + paramList;
 
     }
 
@@ -240,7 +272,7 @@ public class LayerInvoker {
                 handler.close();
             }
             handlerMap.clear();
-
+            methodSymbolMap.clear();
             this.metadata = null;
             this.moduleAddress = null;
             this.allocator.free();

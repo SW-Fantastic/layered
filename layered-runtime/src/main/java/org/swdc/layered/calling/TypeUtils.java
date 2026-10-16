@@ -2,10 +2,7 @@ package org.swdc.layered.calling;
 
 import org.swdc.layered.MetaType;
 import org.swdc.layered.pointers.*;
-import org.swdc.layered.types.Const;
-import org.swdc.layered.types.Symbol;
-import org.swdc.layered.types.Unsigned;
-import org.swdc.layered.types.Volatile;
+import org.swdc.layered.types.*;
 
 import java.lang.reflect.*;
 import java.security.InvalidParameterException;
@@ -174,6 +171,23 @@ public class TypeUtils {
 
         throw new RuntimeException("Unsupported type: " + aType.getType().toString());
     }
+
+    public static String getClassSymbol(Class<?> clazz) {
+
+        Namespace namespace = clazz.getAnnotation(Namespace.class);
+        Symbol symbol = clazz.getDeclaredAnnotation(Symbol.class);
+
+        String symbolName = "";
+        if (symbol != null) {
+            symbolName = symbol.value();
+        }
+
+        if (namespace != null) {
+            return namespace.value() + "::" + symbolName;
+        }
+        return symbolName;
+
+    }
     
     /**
      * 将 MetaType 元类型映射为对应的 InvokerType 调用器类型。
@@ -202,7 +216,13 @@ public class TypeUtils {
         } else if (type == MetaType.VOID) {
             return InvokerType.LAYER_VOID;
         } else if (type == MetaType.SIZE_T) {
-            return InvokerType.LAYER_LONG;
+            return InvokerType.LAYER_SIZE_T;
+        } else if (type == MetaType.LONG_LONG) {
+            return InvokerType.LAYER_LONG_LONG;
+        } else if (type == MetaType.CHAR) {
+            return InvokerType.LAYER_CHAR;
+        } else if (type == MetaType.SHORT) {
+            return InvokerType.LAYER_SHORT;
         } else {
             throw new RuntimeException("Unknown meta type: " + type);
         }

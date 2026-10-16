@@ -1,0 +1,1 @@
+void [=getDtorPrefix()]_[=getDtorIndex()]( [=getMetaType().getRawType().getTypeName()] instancePtr );

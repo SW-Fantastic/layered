@@ -28,10 +28,10 @@ void AnalysiserCallback::run(const clang::ast_matchers::MatchFinder::MatchResult
 std::string ParserHelper::getScope(const clang::DeclContext* typeDeclCtx) {
 
 	std::string typeNamespace = "";
+	const clang::DeclContext* current = typeDeclCtx;
+	while (current && !current->isTranslationUnit()) {
 
-	while (typeDeclCtx && !typeDeclCtx->isTranslationUnit()) {
-
-		const clang::CXXRecordDecl* cxxRecordDecl = llvm::dyn_cast<clang::CXXRecordDecl>(typeDeclCtx);
+		const clang::CXXRecordDecl* cxxRecordDecl = llvm::dyn_cast<clang::CXXRecordDecl>(current);
 		if (cxxRecordDecl) {
 			const clang::ClassTemplateSpecializationDecl* templateSpecDecl = llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(cxxRecordDecl);
 			if (templateSpecDecl) {
@@ -42,13 +42,17 @@ std::string ParserHelper::getScope(const clang::DeclContext* typeDeclCtx) {
 			}
 		}
 
-		const clang::NamespaceDecl* namespaceDecl = llvm::dyn_cast<clang::NamespaceDecl>(typeDeclCtx);
+		const clang::NamespaceDecl* namespaceDecl = llvm::dyn_cast<clang::NamespaceDecl>(current);
 		if (namespaceDecl) {
 			if (!namespaceDecl->isAnonymousNamespace()) {
 				typeNamespace = namespaceDecl->getNameAsString() + SPLITER + typeNamespace;
 			}
 		}
+		current = current->getParent();
+	}
 
+	if (typeNamespace.ends_with(SPLITER)) {
+		typeNamespace = typeNamespace.substr(0, typeNamespace.length() - 2);
 	}
 
 	return typeNamespace;
@@ -94,7 +98,7 @@ bool ParserHelper::haveDefaultConstructor(clang::RecordDecl* decl) {
 	}
 
 	clang::CXXRecordDecl* cxxDecl = llvm::dyn_cast<clang::CXXRecordDecl>(decl);
-	if (!cxxDecl) {
+	if (!cxxDecl || cxxDecl->isAggregate()) {
 		// C struct，support new operator
 		return true;
 	}
@@ -228,7 +232,7 @@ std::string FunctionProtoParser::parse(ClangType rawType) {
 		funcName, "", retTypeId, params.size(), params, true
 	);
 
-	this->context->put(descriptor);
+	descriptor = this->context->put(descriptor);
 
 	return descriptor->getId();
 
@@ -252,6 +256,7 @@ std::string FunctionParser::parse(ClangType rawType) {
 	std::string funcName = decl->getNameAsString();
 	std::vector<std::string> params;
 
+
 	std::string returnTypeId = touch(decl->getReturnType());
 	if (returnTypeId.empty()) {
 		return "";
@@ -274,7 +279,7 @@ std::string FunctionParser::parse(ClangType rawType) {
 		funcName, scope, returnTypeId, params.size(), params, false
 	);
 
-	this->context->put(descriptor);
+	descriptor = this->context->put(descriptor);
 
 	return descriptor->getId();
 }
@@ -318,7 +323,7 @@ std::string PointerParser::parse(ClangType rawType) {
 				innerType.isConstQualified(), 
 				innerType.isVolatileQualified()
 			);
-			this->context->put(result);
+			result = this->context->put(result);
 		} else {
 			PointerTypeDescriptor* next = new PointerTypeDescriptor(
 				result->getId(),
@@ -326,7 +331,7 @@ std::string PointerParser::parse(ClangType rawType) {
 				innerType.isConstQualified(), 
 				innerType.isVolatileQualified()
 			);
-			this->context->put(next);
+			next = this->context->put(next);
 			result = next;
 		}
 		types.pop();
@@ -361,11 +366,20 @@ std::string StructParser::parse(ClangType rawType) {
 		qName, nsName,
 		qType.isConstQualified(), qType.isVolatileQualified(),
 		ParserHelper::isRecordMovable(recordDecl),
-		ParserHelper::haveDefaultConstructor(recordDecl)
+		ParserHelper::haveDefaultConstructor(recordDecl),
+		recordDecl->isCompleteDefinition()
 	);
 
+	result = this->context->put(result);
+
+	if (result->getState() == DescriptorState::PROCESSING) {
+		return result->getId();
+	}
+
+	result->updateState(DescriptorState::PROCESSING);
+
 	for (const clang::FieldDecl* fieldDecl : recordDecl->fields()) {
-		
+
 		std::string fieldName = fieldDecl->getNameAsString();
 		clang::QualType type = fieldDecl->getType();
 		std::string typeId = this->touch(type);
@@ -375,10 +389,9 @@ std::string StructParser::parse(ClangType rawType) {
 		result->updateField(fieldName, typeId);
 
 	}
+	result->updateState(DescriptorState::RESOLVED);
 
-	this->context->put(result);
 	return result->getId();
-
 	
 }
 

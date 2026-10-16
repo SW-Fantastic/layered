@@ -69,7 +69,7 @@ public class PtrPointer<T extends OpaquePointer> extends SeekablePointer {
         if (pointer != null) {
 
             // 检验已存在的指针是否符合类型要求
-            if (pointer.getClass().isAssignableFrom(type)) {
+            if (type.isAssignableFrom(pointer.getClass())) {
                 return (R)pointer;
             }
             throw new RuntimeException("pointer type mismatch, pointer should be " + pointer.getClass().getName());

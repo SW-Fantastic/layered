@@ -49,8 +49,8 @@ public class LayerInvokeHandler implements InvocationHandler {
 
         try {
 
-            buffer = handler.allocParameters(args);
-            result = handler.call(buffer);
+            buffer = handler.allocParameters(method,args);
+            result = handler.call(method,buffer);
 
             Class<?> returnType = method.getReturnType();
             if (returnType == void.class || returnType == Void.class) {
@@ -127,6 +127,7 @@ public class LayerInvokeHandler implements InvocationHandler {
 
         } finally {
 
+            buffer.reset();
             handler.freeParameters(buffer);
 
         }

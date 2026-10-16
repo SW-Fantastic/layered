@@ -68,6 +68,8 @@ public:
 	PointerTypeDescriptor* put(PointerTypeDescriptor* ptrType);
 	RecordTypeDescriptor* put(RecordTypeDescriptor* recType);
 
+	std::vector<RecordTypeDescriptor*> getStructs();
+
 	std::string writeAsJson();
 
 	void appendLog(DiagnosticMsg* msg);
@@ -86,9 +88,9 @@ private:
 
 	void initBuiltInTypes();
 
-	void pushPointerType(PointerTypeDescriptor* rec);
-	void pushStructType(RecordTypeDescriptor* rec);
-	void pushBuiltType(BuiltInDescriptor* desc);
+	PointerTypeDescriptor* pushPointerType(PointerTypeDescriptor* rec);
+	RecordTypeDescriptor* pushStructType(RecordTypeDescriptor* rec);
+	BuiltInDescriptor* pushBuiltType(BuiltInDescriptor* desc);
 
 	std::string writeJson(BaseTypeDescriptor* desc);
 

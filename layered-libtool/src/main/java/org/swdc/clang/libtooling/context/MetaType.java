@@ -4,13 +4,14 @@ public enum MetaType {
 
     INT("I", "int"),
     LONG("L", "long"),
+    LONG_LONG("Ll", "long long"),
     FLOAT("F", "float"),
     DOUBLE("D", "double"),
     SHORT("S", "short"),
     CHAR("C", "char"),
     VOID("V", "void"),
-    SIZE_T("Sz", "size_t"),
 
+    SIZE_T("Sz", "size_t"),
     INTPTR_T("p", "intptr_t");
 
     private String mangledFlag;

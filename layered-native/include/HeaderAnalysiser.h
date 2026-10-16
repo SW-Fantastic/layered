@@ -2,11 +2,14 @@
 #define _HEADER_ANALYSISTER_
 
 #include <clang/AST/Type.h>
+#include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendAction.h>
+
 #include <clang/AST/ASTConsumer.h>
 #include <clang/Tooling/Tooling.h>
 
 #include "AnalysiserContext.h"
+#include "AnalysiserVisitors.h"
 
 class ParseConsumer : public clang::ASTConsumer {
 
@@ -33,6 +36,7 @@ public:
 	std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
 		clang::CompilerInstance& CI, llvm::StringRef file
 	) override;
+
 
 private:
 

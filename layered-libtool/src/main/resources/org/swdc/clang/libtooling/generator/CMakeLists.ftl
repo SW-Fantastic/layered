@@ -1,23 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project([=projectName])
 
-# 跨平台 C++ 运行时 (CRT) 静态链接统一配置
-if(WIN32)
-    # -----------------------------------------------------------------
-    # Windows 平台：强制所有 Target 使用 /MT 或 /MTd
-    # -----------------------------------------------------------------
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
-    message(STATUS "Using Static CRT for Windows (/MT)")
-else()
-    # -----------------------------------------------------------------
-    # Linux / macOS (GCC 或 Clang) 平台
-    # -----------------------------------------------------------------
-    # 强制链接器静态合并标准 C++ 库和 GCC 基础库
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
-    message(STATUS "Using Static C++ Runtime for Unix-like platform")
-endif()
-
 # 定义用户传入的多个库查找目录（用分号分隔的列表）
 # 默认指向当前目录下的 libs 文件夹
 set(SEARCH_LIB_DIRS 

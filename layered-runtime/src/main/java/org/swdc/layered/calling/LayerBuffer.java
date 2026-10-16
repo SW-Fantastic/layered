@@ -39,7 +39,7 @@ public class LayerBuffer {
 
     }
 
-    private void reset() {
+    public void reset() {
 
         if (paramBuffer == null || paramPtr == null || resultBuffer == null) {
             return;

@@ -5,7 +5,10 @@ import org.swdc.layered.LayerFunction;
 import org.swdc.layered.MemoryManager;
 import org.swdc.layered.MetaType;
 import org.swdc.layered.pointers.*;
+import org.swdc.layered.types.Unsigned;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class LayerCIFHandler {
@@ -98,8 +101,9 @@ public class LayerCIFHandler {
      * @return 转换后的指针数组，每个元素按顺序对应一个函数参数
      * @throws RuntimeException 当 moduleAddress 为 0，或遇到未知的元数据类型时抛出
      */
-    public LayerBuffer allocParameters( Object... args) {
+    public LayerBuffer allocParameters(Method method, Object... args) {
 
+        Parameter[] parameters = method.getParameters();
         LayerBuffer buffer = bufferPool.borrow();
         long moduleAddress = invoker.getModuleAddress();
         if (moduleAddress == 0) {
@@ -134,6 +138,30 @@ public class LayerCIFHandler {
                 if (val == null) {
                     val = 0L;
                 }
+
+                Parameter param = parameters[i];
+                if (param.getAnnotation(Unsigned.class) != null && val < 0) {
+                    throw new IllegalArgumentException("Unsigned long value is negative: " + val);
+                }
+
+                String osType = System.getProperty("os.name").toLowerCase();
+                if (osType.contains("windows") && val >= Integer.MAX_VALUE) {
+                    throw new IllegalArgumentException("Long value is too large for Windows platform: " + val);
+                }
+                MemoryManager.writeLong(buffer.getParameterBuf(i).getAddress(), 0, val);
+
+            } else if (metaType == MetaType.LONG_LONG) {
+
+                Long val = (Long)args[i];
+                if (val == null) {
+                    val = 0L;
+                }
+
+                Parameter param = parameters[i];
+                if (param.getAnnotation(Unsigned.class) != null && val < 0) {
+                    throw new IllegalArgumentException("Unsigned long value is negative: " + val);
+                }
+
                 MemoryManager.writeLong(buffer.getParameterBuf(i).getAddress(), 0, val);
 
             } else if (metaType == MetaType.DOUBLE){
@@ -144,7 +172,7 @@ public class LayerCIFHandler {
                 }
                 MemoryManager.writeDouble(buffer.getParameterBuf(i).getAddress(), 0, val);
 
-            } else if (metaType == MetaType.INTPTR_T || metaType == MetaType.SIZE_T) {
+            } else if (metaType == MetaType.INTPTR_T) {
 
                 Long addr = 0L;
                 if (args[i] instanceof UniquePointer) {
@@ -153,6 +181,20 @@ public class LayerCIFHandler {
                     addr = ((OpaquePointer)args[i]).getAddress();
                 }
                 MemoryManager.writeAddress(buffer.getParameterBuf(i).getAddress(), 0, addr);
+
+            } else if (metaType == MetaType.SIZE_T) {
+
+                Long val = 0L;
+                if (args[i] instanceof Number) {
+                    val = (Long) args[i];
+                }
+
+                Parameter param = parameters[i];
+                if (param.getAnnotation(Unsigned.class) != null && val < 0) {
+                    throw new IllegalArgumentException("Unsigned long value is negative: " + val);
+                }
+
+                MemoryManager.writeSizeT(buffer.getParameterBuf(i).getAddress(), 0, val);
 
             } else if (metaType == MetaType.SHORT) {
 
@@ -196,37 +238,30 @@ public class LayerCIFHandler {
      * @return 指向函数返回值的指针，调用方负责在使用完毕后释放内存
      * @throws RuntimeException 当模块地址、CIF地址或函数地址任一为0时抛出
      */
-    public OpaquePointer call(LayerBuffer buffer) {
+    public OpaquePointer call(Method method, LayerBuffer buffer) {
 
-        try {
+        long functionAddress = invoker.lookupMethodAddress(method);
+        long moduleAddress = invoker.getModuleAddress();
+        long cifAddress = getCifAddress();
 
-            lock.lock();
-
-            long functionAddress = invoker.lookupMethodAddress(function);
-            long moduleAddress = invoker.getModuleAddress();
-            long cifAddress = getCifAddress();
-
-            if (moduleAddress == 0 || cifAddress == 0 ||  functionAddress == 0) {
-                throw new RuntimeException("Module address or cifAddress is null");
-            }
-
-            OpaquePointer result = buffer.getResultBuf();
-            OpaquePointer params = buffer.getParamPtr();
-
-            ExternalInvoker.call(
-                    cifAddress,
-                    result.getAddress(),
-                    functionAddress,
-                    params.getAddress(),
-                    ffiArgTypes
-            );
-
-            params.close();
-            return result;
-
-        } finally {
-            lock.unlock();
+        if (moduleAddress == 0 || cifAddress == 0 ||  functionAddress == 0) {
+            throw new RuntimeException("Module address or cifAddress is null");
         }
+
+        OpaquePointer result = buffer.getResultBuf();
+        OpaquePointer params = buffer.getParamPtr();
+
+        ExternalInvoker.call(
+                cifAddress,
+                result.getAddress(),
+                functionAddress,
+                params.getAddress(),
+                ffiArgTypes
+        );
+
+        params.close();
+        return result;
+
 
     }
 

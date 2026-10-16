@@ -40,7 +40,7 @@ if(NOT VCPKG_TARGET_TRIPLET)
         set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "" FORCE)
     else()
         # Linux / macOS
-        set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "" FORCE) # Linux 默认就是共享系统 libc 但可以静态 C++ 
+        set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "" FORCE) # Linux 默认就是共享系统 libc 但可以静态 C++
     endif()
 endif()
 
@@ -122,4 +122,4 @@ target_link_libraries(layer_test PRIVATE
 )
 
 target_link_libraries(layerRuntime PRIVATE unofficial::libffi::libffi)
-target_link_libraries(layerRuntime PRIVATE mimalloc)
+target_link_libraries(layerRuntime PRIVATE mimalloc-static)

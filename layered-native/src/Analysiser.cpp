@@ -32,15 +32,25 @@ void parseSourceFile(const char* workingDir, int paramCount, const char** params
 
 int main(int argc, char** argv) {
 
-	const std::string pwd = ".";
-	const char* params[] = { "-Xclang"};
-	// D:\\JavaProjects\\layered\\assets\\json\\include\\nlohmann\\json_fwd.hpp
+	/*const std::string pwd = ".";
+	const char* params[] = {
+		"-I", "D:\\SDK\\wxWidgets-3.2\\include\\", 
+		"-I", "D:\\SDK\\wxWidgets-3.2\\lib\\vc_x64_dll\\mswu", 
+		"-std=c++17", "-x", "c++"
+	};
 	const char* args[] = {
-		"D:\\JavaProjects\\layered\\assets\\pdfium-v152.0.7947.0\\include\\fpdfview.h",
-		"D:\\JavaProjects\\layered\\assets\\pdfium-v152.0.7947.0\\include\\fpdf_edit.h"
+		"D:\\SDK\\wxWidgets-3.2\\include\\wx\\wx.h"
 	};
 
-	parseSourceFile(pwd.c_str(), 0, params, 2, args);
+	parseSourceFile(pwd.c_str(), 7, params, 1, args); */
+
+	const char* params[] = {""};
+	const char* args[] = {
+		"D:\\JavaProjects\\layered\\layered-libtool\\.\\assets\\cmake_test\\libs\\pdfium\\include\\fpdfview.h",
+		"D:\\JavaProjects\\layered\\layered-libtool\\.\\assets\\cmake_test\\libs\\pdfium\\include\\fpdf_edit.h"
+	};
+
+	parseSourceFile(".", 1, params, 2, args);
 
 	return 0;
 }

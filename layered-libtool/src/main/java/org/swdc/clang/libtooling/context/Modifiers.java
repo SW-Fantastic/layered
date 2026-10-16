@@ -18,5 +18,6 @@ public interface Modifiers {
 
     int IsMovable = 0x40;
     int HasNoArgsCtor = 0x80;
+    int IsCompleteType = 0x100;
 
 }

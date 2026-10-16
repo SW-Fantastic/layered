@@ -282,7 +282,7 @@ public class Allocator {
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
         }
-        MemoryManager.memset(address, 0, capacity);
+        MemoryManager.memset(address, 0, memorySize);
         FloatPointer pointer = new FloatPointer(this, address, -1, true, capacity);
         allocatedPointers.put(address, pointer);
         return pointer;
@@ -306,7 +306,7 @@ public class Allocator {
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
         }
-        MemoryManager.memset(address, 0, capacity);
+        MemoryManager.memset(address, 0, memorySize);
         DoublePointer pointer = new DoublePointer(this, address, -1, true, capacity);
         allocatedPointers.put(address, pointer);
         return pointer;
@@ -321,7 +321,7 @@ public class Allocator {
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
         }
-        MemoryManager.memset(address, 0, capacity);
+        MemoryManager.memset(address, 0, memorySize);
         ShortPointer pointer = new ShortPointer(this, address, -1, true, capacity);
         allocatedPointers.put(address, pointer);
         return pointer;
@@ -349,7 +349,7 @@ public class Allocator {
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
         }
-        MemoryManager.memset(address, 0, capacity);
+        MemoryManager.memset(address, 0, memorySize);
         PtrPointer<T> pointer = new PtrPointer<>(this, address, -1, true, capacity);
         allocatedPointers.put(address, pointer);
         return pointer;
@@ -372,7 +372,7 @@ public class Allocator {
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
         }
-        MemoryManager.memset(address, 0, capacity);
+        MemoryManager.memset(address, 0, memorySize);
         BytePointer pointer = new BytePointer(this, address, -1, true, capacity);
         allocatedPointers.put(address, pointer);
         return pointer;
@@ -403,7 +403,7 @@ public class Allocator {
         if (address == 0) {
             throw new RuntimeException("Failed to allocate aligned memory");
         }
-        MemoryManager.memset(address, 0, capacity);
+        MemoryManager.memset(address, 0, memorySize);
         BytePointer pointer = new BytePointer(this, address, -1, true, capacity);
         allocatedPointers.put(address, pointer);
         return pointer;

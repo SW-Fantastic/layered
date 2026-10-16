@@ -9,8 +9,9 @@ public enum MetaType {
     SHORT("S", "short"),
     CHAR("C", "char"),
     VOID("V", "void"),
-    SIZE_T("Sz", "size_t"),
 
+    LONG_LONG("Ll", "long long"),
+    SIZE_T("Sz", "size_t"),
     INTPTR_T("p", "intptr_t");
 
     private String mangledFlag;

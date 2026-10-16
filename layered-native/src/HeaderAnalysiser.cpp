@@ -24,7 +24,7 @@ void ParseConsumer::HandleTranslationUnit(clang::ASTContext& Ctx) {
 	policy.FullyQualifiedName = true;
 	Ctx.setPrintingPolicy(policy);
 
-	MatchFinder* finder = new  MatchFinder();
+	MatchFinder finder;
 
 	auto globalFuncMatcher = functionDecl(
 		hasDeclContext(anyOf(
@@ -47,11 +47,9 @@ void ParseConsumer::HandleTranslationUnit(clang::ASTContext& Ctx) {
 	).bind("structDecl");
 
 	AnalysiserCallback analasiserCallback(this->context);
-	finder->addMatcher(structMatcher, &analasiserCallback);
-	finder->addMatcher(globalFuncMatcher, &analasiserCallback);
-	finder->matchAST(Ctx);
-
-	delete finder;
+	finder.addMatcher(structMatcher, &analasiserCallback);
+	finder.addMatcher(globalFuncMatcher, &analasiserCallback);
+	finder.matchAST(Ctx);
 
 }
 

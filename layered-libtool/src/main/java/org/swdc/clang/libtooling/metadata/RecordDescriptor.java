@@ -16,6 +16,11 @@ public class RecordDescriptor extends AbstractDescriptor {
      */
     private boolean hasNoArgsCtor;
 
+    /**
+     * 是否为完整类型，不完整的类型不能生成构造方法和析构方法。
+     */
+    private boolean completeType;
+
     public boolean isMovable() {
         return movable;
     }
@@ -40,4 +45,11 @@ public class RecordDescriptor extends AbstractDescriptor {
         this.fields = fields;
     }
 
+    public boolean isCompleteType() {
+        return completeType;
+    }
+
+    public void setCompleteType(boolean completeType) {
+        this.completeType = completeType;
+    }
 }
