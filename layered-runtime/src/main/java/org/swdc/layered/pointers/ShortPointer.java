@@ -50,7 +50,7 @@ public class ShortPointer extends SeekablePointer{
 
     @Override
     public int getElementMemorySize() {
-        return MemoryManager.sizeOfShort();
+        return MemoryManager.getSizeOfShort();
     }
 
 }

@@ -42,8 +42,13 @@ public class BuiltInMetaType extends AbstractMetaType {
         if (getName() == null || getName().isBlank()) {
             throw new IllegalArgumentException("Name cannot be null or blank");
         }
+
+        String rawName = getRawType().getTypeName();
+        if (rawName.toLowerCase().contains("long long")) {
+            rawName = "llong";
+        }
         String cvModifier = MetaTypeUtils.cppMangledModifier(this);
-        String result = (isUnsigned() ? "U" : "") + getRawType().getTypeName();
+        String result = (isUnsigned() ? "U" : "") + rawName;
         return cvModifier + result;
     }
 

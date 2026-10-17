@@ -440,6 +440,8 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
             for (FunctionMetaType metaType : descriptorsFactory.getFunctions(header)) {
 
                 if (metaType.isCallback()) {
+                    WritableFunction callback = createFunctionMetadata(metaType, prefix, null);
+                    metadata.addCallback(callback);
                     continue;
                 }
 
@@ -518,7 +520,7 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
      * @param functionIndex  函数索引，用于生成唯一的函数标识符
      * @return 包含完整函数元数据的WritableFunction对象
      */
-    private WritableFunction createFunctionMetadata(FunctionMetaType metaType, String prefix, int functionIndex) {
+    private WritableFunction createFunctionMetadata(FunctionMetaType metaType, String prefix, Integer functionIndex) {
 
         List<MetaType> params = new ArrayList<>();
         List<AbstractMetaType> types = metaType.getParameterTypes();
@@ -527,9 +529,15 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
             params.add(type.getRawType());
         }
 
+        String targetName = null;
+        if (functionIndex != null) {
+            targetName = prefix + functionIndex;
+        } else {
+            targetName = prefix;
+        }
         MetaType returnType = metaType.getReturnType().getRawType();
         return new WritableFunction(
-                prefix + "_" + functionIndex,
+                targetName,
                 metaType.getMangledName(),
                 params,
                 returnType

@@ -4,25 +4,115 @@ import java.nio.ByteBuffer;
 
 public class MemoryManager {
 
-    public static native int sizeOfPointer();
+    private static int sizeOfPointer;
 
-    public static native int sizeOfInt();
+    private static int sizeOfInt;
 
-    public static native int sizeOfLong();
+    private static int sizeOfLong;
 
-    public static native int sizeOfDouble();
+    private static int sizeOfDouble;
 
-    public static native int sizeOfFloat();
+    private static int sizeOfFloat;
 
-    public static native int sizeOfByte();
+    private static int sizeOfByte;
 
-    public static native int sizeOfShort();
+    private static int sizeOfShort;
 
-    public static native int sizeOfLongLong();
+    private static int sizeOfLongLong;
 
-    public static native int sizeOfSizeT();
+    private static int sizeOfSizeT;
 
-    public static native int sizeOfBoolean();
+    private static int sizeOfBoolean;
+
+    public static int getSizeOfPointer() {
+        if (sizeOfPointer == 0) {
+            sizeOfPointer = sizeOfPointer();
+        }
+        return sizeOfPointer;
+    }
+
+    public static int getSizeOfInt() {
+        if (sizeOfInt == 0) {
+            sizeOfInt = sizeOfInt();
+        }
+        return sizeOfInt;
+    }
+
+    public static int getSizeOfLong() {
+        if (sizeOfLong == 0) {
+            sizeOfLong = sizeOfLong();
+        }
+        return sizeOfLong;
+    }
+
+    public static int getSizeOfDouble() {
+        if (sizeOfDouble == 0) {
+            sizeOfDouble = sizeOfDouble();
+        }
+        return sizeOfDouble;
+    }
+
+    public static int getSizeOfFloat() {
+        if (sizeOfFloat == 0) {
+            sizeOfFloat = sizeOfFloat();
+        }
+        return sizeOfFloat;
+    }
+
+    public static int getSizeOfByte() {
+        if (sizeOfByte == 0) {
+            sizeOfByte = sizeOfByte();
+        }
+        return sizeOfByte;
+    }
+
+    public static int getSizeOfShort() {
+        if (sizeOfShort == 0) {
+            sizeOfShort = sizeOfShort();
+        }
+        return sizeOfShort;
+    }
+
+    public static int getSizeOfLongLong() {
+        if (sizeOfLongLong == 0) {
+            sizeOfLongLong = sizeOfLongLong();
+        }
+        return sizeOfLongLong;
+    }
+
+    public static int getSizeOfSizeT() {
+        if (sizeOfSizeT == 0) {
+            sizeOfSizeT = sizeOfSizeT();
+        }
+        return sizeOfSizeT;
+    }
+
+    public static int getSizeOfBoolean() {
+        if (sizeOfBoolean == 0) {
+            sizeOfBoolean = sizeOfBoolean();
+        }
+        return sizeOfBoolean;
+    }
+
+    private static native int sizeOfPointer();
+
+    private static native int sizeOfInt();
+
+    private static native int sizeOfLong();
+
+    private static native int sizeOfDouble();
+
+    private static native int sizeOfFloat();
+
+    private static native int sizeOfByte();
+
+    private static native int sizeOfShort();
+
+    private static native int sizeOfLongLong();
+
+    private static native int sizeOfSizeT();
+
+    private static native int sizeOfBoolean();
 
     public static native long malloc(int size);
 
@@ -119,7 +209,6 @@ public class MemoryManager {
     public static native void writeLongLong(long address, int index, long value);
 
     public static native void writeLongLongArray(long address, long[] values);
-
 
 
 }

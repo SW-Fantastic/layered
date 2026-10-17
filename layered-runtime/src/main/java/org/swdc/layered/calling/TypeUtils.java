@@ -61,7 +61,16 @@ public class TypeUtils {
                 if (type.equals(int.class) || type.equals(Integer.class) || type.equals(boolean.class) || type.equals(Boolean.class)) {
                     symbolName = (isUnsigned) ? "Uint" : "int";
                 } else if (type.equals(long.class) || type.equals(Long.class)) {
-                    symbolName = (isUnsigned) ? "Ulong" : "long";
+                    SafeLong safeLong = aType.getAnnotation(SafeLong.class);
+                    if (safeLong == null) {
+                        safeLong = parent.getAnnotation(SafeLong.class);
+                    }
+
+                    if (safeLong == null) {
+                        symbolName = (isUnsigned) ? "Ulong" : "long";
+                    } else {
+                        symbolName = (isUnsigned) ? "Ullong" : "llong";
+                    }
                 } else if (type.equals(float.class) || type.equals(Float.class)) {
                     symbolName = "float";
                 } else if (type.equals(double.class) || type.equals(Double.class)) {
@@ -88,6 +97,8 @@ public class TypeUtils {
                         symbolName = isUnsigned ? "Uchar_ptr_" : "char_ptr_";
                     } else if (type.equals(OpaquePointer.class)) {
                         symbolName = "void_ptr_";
+                    } else if (type.equals(LongLongPointer.class)) {
+                        symbolName = (isUnsigned) ? "Ullong_ptr_" : "llong_ptr_";
                     } else {
                         symbolName = type.getSimpleName() + "_ptr_";
                     }

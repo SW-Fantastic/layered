@@ -3,6 +3,7 @@ package org.swdc.layered.calling;
 
 import org.swdc.layered.MemoryManager;
 import org.swdc.layered.pointers.*;
+import org.swdc.layered.types.SafeLong;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
@@ -52,6 +53,10 @@ public class LayerInvokeHandler implements InvocationHandler {
             buffer = handler.allocParameters(method,args);
             result = handler.call(method,buffer);
 
+            SafeLong safeLong = method.getReturnType().getAnnotation(SafeLong.class);
+            if (safeLong == null) {
+                safeLong = method.getAnnotation(SafeLong.class);
+            }
             Class<?> returnType = method.getReturnType();
             if (returnType == void.class || returnType == Void.class) {
 
@@ -63,6 +68,9 @@ public class LayerInvokeHandler implements InvocationHandler {
 
             } else if(returnType == long.class || returnType == Long.class) {
 
+                if (safeLong != null) {
+                    return MemoryManager.readLongLong(result.getAddress(),0);
+                }
                 return MemoryManager.readLong(result.getAddress(),0);
 
             } else if (returnType == float.class || returnType == Float.class) {

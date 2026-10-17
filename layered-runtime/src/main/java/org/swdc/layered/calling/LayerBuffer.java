@@ -24,16 +24,16 @@ public class LayerBuffer {
             parameterCount = 1;
         }
 
-        int size = MemoryManager.sizeOfPointer() * parameterCount;
+        int size = MemoryManager.getSizeOfPointer() * parameterCount;
 
         this.paramCount = parameterCount;
         this.paramPtr = allocator.allocatePtr(size);
         this.paramBuffer = allocator.allocateByte(size);
-        this.resultBuffer = allocator.allocateByte(MemoryManager.sizeOfPointer());
+        this.resultBuffer = allocator.allocateByte(MemoryManager.getSizeOfPointer());
 
         MemoryManager.memset(paramPtr.getAddress(), 0, size);
         for (int i = 0; i < parameterCount; i++) {
-            paramPtr.set(i, paramBuffer.offset(i * MemoryManager.sizeOfPointer()));
+            paramPtr.set(i, paramBuffer.offset(i * MemoryManager.getSizeOfPointer()));
         }
         reset();
 
@@ -49,9 +49,9 @@ public class LayerBuffer {
             return;
         }
 
-        int size = MemoryManager.sizeOfPointer() * paramCount;
+        int size = MemoryManager.getSizeOfPointer() * paramCount;
         MemoryManager.memset(paramBuffer.getAddress(), 0, size);
-        MemoryManager.memset(resultBuffer.getAddress(), 0, MemoryManager.sizeOfPointer());
+        MemoryManager.memset(resultBuffer.getAddress(), 0, MemoryManager.getSizeOfPointer());
 
     }
 
@@ -62,7 +62,7 @@ public class LayerBuffer {
         if (index < 0 || index >= paramCount) {
             throw new RuntimeException("Index out of bounds.");
         }
-        return paramBuffer.offset(index * MemoryManager.sizeOfPointer());
+        return paramBuffer.offset(index * MemoryManager.getSizeOfPointer());
     }
 
     public OpaquePointer getResultBuf() {
@@ -82,7 +82,7 @@ public class LayerBuffer {
     public void close() {
 
         for (int i = 0; i < paramCount; i++) {
-            OpaquePointer ptr = paramBuffer.offset(i * MemoryManager.sizeOfPointer());
+            OpaquePointer ptr = paramBuffer.offset(i * MemoryManager.getSizeOfPointer());
             ptr.close();
         }
         paramBuffer.close();

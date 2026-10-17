@@ -33,6 +33,9 @@ public class Allocator {
     private Map<Long, UniquePointer> movingPointers = new ConcurrentHashMap<>();
 
 
+    /**
+     * 读写锁，用于同步对内存分配器状态的访问。
+     */
     private ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
@@ -212,6 +215,38 @@ public class Allocator {
         }
     }
 
+    public OpaquePointer borrow(long address) {
+        try {
+            lock.readLock().lock();
+            if (borrowedPointers.containsKey(address)) {
+                return borrowedPointers.get(address);
+            }
+            OpaquePointer pointer = new OpaquePointer(this, address, 0, false);
+            borrowedPointers.put(address, pointer);
+            return pointer;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public PtrPointer borrowPtr(long address) {
+        try {
+            lock.readLock().lock();
+            if (borrowedPointers.containsKey(address)) {
+                OpaquePointer pointer = borrowedPointers.get(address);
+                if (pointer instanceof PtrPointer) {
+                    return (PtrPointer) pointer;
+                }
+                throw new RuntimeException("Pointer is not a PtrPointer !");
+            }
+            PtrPointer pointer = new PtrPointer(this, address, 0, false);
+            borrowedPointers.put(address, pointer);
+            return pointer;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     /**
      * 分配指定容量的整型内存空间，清零后返回对应的整型指针。
      *
@@ -226,7 +261,7 @@ public class Allocator {
             throw new IllegalArgumentException("Illegal capacity: " + capacity);
         }
 
-        int memorySize = MemoryManager.sizeOfInt() * capacity;
+        int memorySize = MemoryManager.getSizeOfInt() * capacity;
         long address = MemoryManager.malloc(memorySize);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
@@ -254,7 +289,7 @@ public class Allocator {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Illegal capacity: " + capacity);
         }
-        int memorySize = MemoryManager.sizeOfLong() * capacity;
+        int memorySize = MemoryManager.getSizeOfLong() * capacity;
         long address = MemoryManager.malloc(memorySize);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
@@ -277,7 +312,7 @@ public class Allocator {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Illegal capacity: " + capacity);
         }
-        int memorySize = MemoryManager.sizeOfFloat() * capacity;
+        int memorySize = MemoryManager.getSizeOfFloat() * capacity;
         long address = MemoryManager.malloc(memorySize);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
@@ -301,7 +336,7 @@ public class Allocator {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Illegal capacity: " + capacity);
         }
-        int memorySize = MemoryManager.sizeOfDouble() * capacity;
+        int memorySize = MemoryManager.getSizeOfDouble() * capacity;
         long address = MemoryManager.malloc(memorySize);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
@@ -316,7 +351,7 @@ public class Allocator {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Illegal capacity: " + capacity);
         }
-        int memorySize = MemoryManager.sizeOfShort() * capacity;
+        int memorySize = MemoryManager.getSizeOfShort() * capacity;
         long address = MemoryManager.malloc(memorySize);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
@@ -344,7 +379,7 @@ public class Allocator {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Illegal capacity: " + capacity);
         }
-        int memorySize = MemoryManager.sizeOfPointer() * capacity;
+        int memorySize = MemoryManager.getSizeOfPointer() * capacity;
         long address = MemoryManager.malloc(memorySize);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
@@ -367,7 +402,7 @@ public class Allocator {
         if (capacity <= 0) {
             throw new IllegalArgumentException("Illegal capacity: " + capacity);
         }
-        int memorySize = MemoryManager.sizeOfByte() * capacity;
+        int memorySize = MemoryManager.getSizeOfByte() * capacity;
         long address = MemoryManager.malloc(memorySize);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate memory");
@@ -398,7 +433,7 @@ public class Allocator {
         if (alignment <= 0) {
             throw new IllegalArgumentException("Illegal alignment: " + alignment);
         }
-        int memorySize = MemoryManager.sizeOfByte() * capacity;
+        int memorySize = MemoryManager.getSizeOfByte() * capacity;
         long address = MemoryManager.mallocAligned(memorySize, alignment);
         if (address == 0) {
             throw new RuntimeException("Failed to allocate aligned memory");

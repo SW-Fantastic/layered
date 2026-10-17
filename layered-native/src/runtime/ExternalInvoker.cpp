@@ -18,7 +18,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 	result = JNI_VERSION_1_6;
 	javaVM = vm;
 
-	jclass closureClazz = env->FindClass("org/swdc/layered/calling/PlatformClosure");
+	jclass closureClazz = env->FindClass("org/swdc/layered/calling/LayerClosure");
 	if (closureClazz == NULL) {
 		return JNI_ERR;
 	}
@@ -371,11 +371,18 @@ void closureCall(ffi_cif* cif, void* ret, void** args, void* user_data) {
 
 	JNIEnv* env = NULL;
 	javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+	jboolean attached = 0;
 	if (env == NULL) {
-		javaVM->AttachCurrentThread((void**)&env, NULL);
+		attached = javaVM->AttachCurrentThread((void**)&env, NULL);
 	}
 
-	env->CallVoidMethod((jobject)user_data, closureMethod, reinterpret_cast<intptr_t>(ret), reinterpret_cast<intptr_t>(args));
+	if (env) {
+		env->CallVoidMethod((jobject)user_data, closureMethod, reinterpret_cast<intptr_t>(ret), reinterpret_cast<intptr_t>(args));
+	}
+
+	if (attached) {
+		javaVM->DetachCurrentThread();
+	}
 
 }
 

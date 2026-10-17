@@ -23,7 +23,7 @@ public class FloatPointer extends SeekablePointer {
 
     @Override
     public int getElementMemorySize() {
-        return MemoryManager.sizeOfFloat();
+        return MemoryManager.getSizeOfFloat();
     }
 
     public float get(int index) {

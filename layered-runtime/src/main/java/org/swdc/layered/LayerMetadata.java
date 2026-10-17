@@ -5,30 +5,24 @@ import java.util.Map;
 
 public class LayerMetadata {
 
-    private String prefix;
-
     private Map<String, LayerFunction> symbols = new HashMap<>();
 
-
-    public String getPrefix() {
-        return prefix;
-    }
+    private Map<String, LayerFunction> callbacks = new HashMap<>();
 
     public Map<String, LayerFunction> getSymbols() {
         return symbols;
-    }
-
-    public void setPrefix(String prefix) {
-        this.prefix = prefix;
     }
 
     public void setSymbols(Map<String, LayerFunction> symbols) {
         this.symbols = symbols;
     }
 
-    public void addFunction(LayerFunction function) {
-        symbols.put(function.getMangledName(), function);
+    public Map<String, LayerFunction> getCallbacks() {
+        return callbacks;
     }
 
+    public void setCallbacks(Map<String, LayerFunction> callbacks) {
+        this.callbacks = callbacks;
+    }
 
 }

@@ -3,6 +3,7 @@ package org.swdc.layered.calling;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.swdc.layered.ExternalInvoker;
+import org.swdc.layered.LayerFunction;
 import org.swdc.layered.LayerMetadata;
 import org.swdc.layered.library.LayerLibrary;
 import org.swdc.layered.library.LayerRuntimeLibrary;
@@ -10,9 +11,12 @@ import org.swdc.layered.library.LibraryResource;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.GZIPInputStream;
@@ -123,17 +127,43 @@ public class LayerModule {
             if (metadata == null) {
                 throw new RuntimeException("Module " + moduleName + " is not loaded");
             }
-            Long libraryAddr = loadedHandles.get(moduleName);
-            LayerInvoker invoker = new LayerInvoker(libraryAddr, metadata);
+
+            LayerInvoker invoker = getInvoker(moduleName);
             Object proxy = Proxy.newProxyInstance(
                     clazz.getClassLoader(),
                     new Class[]{clazz},
                     new LayerInvokeHandler(invoker)
             );
-            callingInvokers.put(moduleName, invoker);
             callingProxies.put(clazz, proxy);
             return (T)proxy;
             
+        } finally {
+            lock.unlock();
+        }
+
+    }
+
+
+    /**
+     * 获取指定模块的调用器，并缓存复用。
+     * <p>
+     * 首先从缓存中查找已创建的调用器，若未命中则加载模块元数据并结合已加载的库句柄创建调用器，随后写入缓存。
+     *
+     * @param moduleName 模块名称
+     * @return 该模块对应的调用器实例
+     */
+    private LayerInvoker getInvoker(String moduleName) {
+
+        try {
+            lock.lock();
+            if (callingInvokers.containsKey(moduleName)) {
+                return callingInvokers.get(moduleName);
+            }
+            LayerMetadata metadata = loadModuleMetadata(moduleName);
+            Long libraryAddr = loadedHandles.get(moduleName);
+            LayerInvoker invoker = new LayerInvoker(libraryAddr, metadata);
+            callingInvokers.put(moduleName, invoker);
+            return invoker;
         } finally {
             lock.unlock();
         }
@@ -193,6 +223,51 @@ public class LayerModule {
     }
 
 
+
+
+    /**
+     * 为指定模块创建回调处理器。
+     * <p>
+     * 该方法加载模块元数据并校验其是否定义了回调，随后通过模块对应的调用器
+     * 将给定的接口实现实例包装为回调闭包，供原生代码在回调时调用。
+     *
+     * @param <T>      回调接口的泛型类型
+     * @param module   模块名称，用于定位原生库和对应的元数据
+     * @param clazz    回调接口的Class对象
+     * @param instance 回调接口的实现实例
+     * @return 包装了给定实例的回调闭包对象
+     * @throws RuntimeException 当模块未加载或不包含回调定义时抛出
+     */
+    public <T> LayerClosure<T> createHandler(String module, Class<T> clazz, T instance) {
+
+        try {
+            lock.lock();
+            LayerMetadata metadata = loadModuleMetadata(module);
+            if (metadata == null) {
+                throw new RuntimeException("Module " + module + " is not loaded");
+            }
+
+            Map<String, LayerFunction> callbacks = metadata.getCallbacks();
+            if(callbacks == null) {
+                throw new RuntimeException("Module " + module + " has no callbacks");
+            }
+
+            LayerInvoker invoker = getInvoker(module);
+            return invoker.createClosure(clazz, instance);
+
+        } finally {
+            lock.unlock();
+        }
+
+    }
+
+
+    /**
+     * 卸载模块，释放其占用的全部资源。
+     * <p>
+     * 在加锁保护下依次关闭所有调用器，清空调用代理、调用器、模块符号与已加载句柄缓存，
+     * 并逐个卸载模块关联的本地库，最后释放锁。
+     */
     public void unload() {
 
         try {

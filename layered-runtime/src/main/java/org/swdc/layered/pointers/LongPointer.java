@@ -31,7 +31,7 @@ public class LongPointer extends SeekablePointer {
 
     @Override
     public int getElementMemorySize() {
-        return MemoryManager.sizeOfLong();
+        return MemoryManager.getSizeOfLong();
     }
 
     public long get(int index) {

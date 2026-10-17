@@ -22,7 +22,7 @@ public class BytePointer extends SeekablePointer{
 
     @Override
     public int getElementMemorySize() {
-        return MemoryManager.sizeOfByte();
+        return MemoryManager.getSizeOfByte();
     }
 
     public byte get(int index) {

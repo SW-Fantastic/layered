@@ -139,7 +139,7 @@ public class PtrPointer<T extends OpaquePointer> extends SeekablePointer {
      */
     @Override
     public int getElementMemorySize() {
-        return MemoryManager.sizeOfPointer();
+        return MemoryManager.getSizeOfPointer();
     }
 
 }

@@ -5,21 +5,12 @@ import java.util.Map;
 
 public class CXXMetadata {
 
-    private String prefix;
-
     private Map<String, WritableFunction> symbols = new HashMap<>();
 
-
-    public String getPrefix() {
-        return prefix;
-    }
+    private Map<String, WritableFunction> callbacks = new HashMap<>();
 
     public Map<String, WritableFunction> getSymbols() {
         return symbols;
-    }
-
-    public void setPrefix(String prefix) {
-        this.prefix = prefix;
     }
 
     public void setSymbols(Map<String, WritableFunction> symbols) {
@@ -28,6 +19,10 @@ public class CXXMetadata {
 
     public void addFunction(WritableFunction function) {
         symbols.put(function.getMangledName(), function);
+    }
+
+    public void addCallback(WritableFunction callback) {
+        callbacks.put(callback.getMangledName(), callback);
     }
 
 }

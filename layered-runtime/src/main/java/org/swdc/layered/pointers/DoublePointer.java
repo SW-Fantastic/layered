@@ -23,7 +23,7 @@ public class DoublePointer extends SeekablePointer {
 
     @Override
     public int getElementMemorySize() {
-        return MemoryManager.sizeOfDouble();
+        return MemoryManager.getSizeOfDouble();
     }
 
     public double get(int index) {

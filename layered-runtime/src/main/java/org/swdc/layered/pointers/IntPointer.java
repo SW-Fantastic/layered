@@ -26,7 +26,7 @@ public class IntPointer extends SeekablePointer{
         if (isNull()) {
             throw new RuntimeException("Pointer is null");
         }
-        return MemoryManager.sizeOfInt();
+        return MemoryManager.getSizeOfInt();
     }
 
     public int get(int index) {

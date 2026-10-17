@@ -29,7 +29,7 @@ public class SizeTPointer extends SeekablePointer {
 
     @Override
     public int getElementMemorySize() {
-        return MemoryManager.sizeOfSizeT();
+        return MemoryManager.getSizeOfSizeT();
     }
     
     /**
