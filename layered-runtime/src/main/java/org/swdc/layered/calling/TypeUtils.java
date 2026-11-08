@@ -3,12 +3,99 @@ package org.swdc.layered.calling;
 import org.swdc.layered.MetaType;
 import org.swdc.layered.pointers.*;
 import org.swdc.layered.types.*;
+import org.swdc.layered.types.Constructor;
 
 import java.lang.reflect.*;
 import java.security.InvalidParameterException;
 import java.util.Stack;
+import java.util.StringJoiner;
 
 public class TypeUtils {
+
+    /**
+     * 根据回调方法的签名生成对应的修饰名称（mangled name）。
+     *
+     * <p>依次解析方法的返回值类型符号与各参数类型符号，按
+     * {@code (返回类型符号)_callback_参数个数@参数类型符号1,参数类型符号2,...} 的格式拼接，
+     * 用于在模块的回调表中查找匹配的回调函数。</p>
+     *
+     * @param method 回调接口中的方法
+     * @return 该方法对应的修饰名称
+     */
+    public static String generateCbMangledName(Method method) {
+
+        String returnTypeSymbol = TypeUtils.getTypeSymbol(method.getAnnotatedReturnType(), method) ;
+
+        StringJoiner joiner = new StringJoiner(",");
+        joiner.add("void_ptr_");
+        for (int index = 0; index < method.getParameterCount(); index++) {
+            Parameter parameter = method.getParameters()[index];
+            String paramTypeSymbol = TypeUtils.getTypeSymbol(parameter.getAnnotatedType(), parameter);
+            joiner.add(paramTypeSymbol);
+        }
+
+        return "(" + returnTypeSymbol + ")_callback_" + method.getParameterCount() + "@{" + joiner + "}";
+
+    }
+
+    /**
+     * 根据方法签名生成符合本机调用规范的修饰名称。
+     *
+     * <p>修饰名称格式为：返回类型符号 + 符号名 + @ + 参数类型符号列表</p>
+     *
+     * <p>如果方法标注了 {@link Symbol} 注解，则使用注解值作为符号名；否则使用方法名。</p>
+     *
+     * @param method 目标方法，不能为 null
+     * @return 生成的修饰名称字符串
+     */
+    public static String generateMangledName(Method method) {
+
+        String returnTypeSymbol = TypeUtils.getTypeSymbol(method.getAnnotatedReturnType(), method) ;
+
+        StringJoiner joiner = new StringJoiner(",");
+        for (int index = 0; index < method.getParameterCount(); index++) {
+            Parameter parameter = method.getParameters()[index];
+            String paramTypeSymbol = TypeUtils.getTypeSymbol(parameter.getAnnotatedType(), parameter);
+            joiner.add(paramTypeSymbol);
+        }
+
+        String paramList = "@{" + joiner + "}";
+        Symbol symbol = method.getAnnotation(Symbol.class);
+        if (symbol != null) {
+            return "(" + returnTypeSymbol + ")" + symbol.value() + paramList;
+        }
+
+        Constructor ctor = method.getDeclaredAnnotation(Constructor.class);
+        if (ctor != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    ctor.value()
+            ) + "_ctor" + paramList;
+        }
+
+        Destructor dtor = method.getDeclaredAnnotation(Destructor.class);
+        if (dtor != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    dtor.value()
+            ) + "_dtor" + paramList;
+        }
+
+        FieldGetter getter = method.getDeclaredAnnotation(FieldGetter.class);
+        if (getter != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    getter.type()
+            ) + "::get_" + getter.field() + paramList;
+        }
+
+        FieldSetter setter = method.getDeclaredAnnotation(FieldSetter.class);
+        if (setter != null) {
+            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
+                    setter.type()
+            ) + "::set_" + setter.field() + paramList;
+        }
+
+        return "(" + returnTypeSymbol + ")"  + method.getName() + paramList;
+
+    }
 
 
     /**
@@ -175,6 +262,24 @@ public class TypeUtils {
                     return symbolName + ptrSymbol;
                 }
                 return symbolName + "_" + ptrSymbol;
+
+            } else if (rawType == LayerClosure.class) {
+
+                AnnotatedType argType = parameterizedType.getAnnotatedActualTypeArguments()[0];
+                Class<?> target = (Class<?>) argType.getType();
+                Closure closure = target.getAnnotation(Closure.class);
+                if (closure == null) {
+                    throw new RuntimeException("Closure annotation missing with class " + target.getName());
+                }
+                if (closure.value() == null || closure.value().isBlank()) {
+                    throw new RuntimeException("No method name specified for " + target.getName());
+                }
+                for (Method method : target.getMethods()) {
+                    if (method.getDeclaringClass() == target && method.getName().equals(closure.value())) {
+                        return generateCbMangledName(method) + "_ptr_";
+                    }
+                }
+                throw new RuntimeException("No method found for " + target.getName());
 
             }
 

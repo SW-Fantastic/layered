@@ -11,17 +11,14 @@ public class LayerBufferPool {
 
     private ReentrantLock lock = new ReentrantLock();
 
-    private final int coreSize;
-
     private final int maxSize;
 
     private final int paramCount;
 
     private Allocator allocator;
 
-    public LayerBufferPool(Allocator allocator, int paramCount, int coreSize, int maxSize) {
+    public LayerBufferPool(Allocator allocator, int paramCount, int maxSize) {
 
-        this.coreSize = coreSize;
         this.maxSize = maxSize;
         this.paramCount = paramCount;
         this.allocator = allocator;

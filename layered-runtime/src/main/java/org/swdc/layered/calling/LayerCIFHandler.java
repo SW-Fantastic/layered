@@ -5,6 +5,7 @@ import org.swdc.layered.LayerFunction;
 import org.swdc.layered.MemoryManager;
 import org.swdc.layered.MetaType;
 import org.swdc.layered.pointers.*;
+import org.swdc.layered.types.Closure;
 import org.swdc.layered.types.Unsigned;
 
 import java.lang.reflect.Method;
@@ -25,18 +26,18 @@ public class LayerCIFHandler {
 
     private LayerBufferPool bufferPool;
 
+
     public LayerCIFHandler(LayerInvoker invoker, LayerFunction function) {
 
         int coreSize = Runtime.getRuntime().availableProcessors();
         this.bufferPool = new LayerBufferPool(
                 invoker.getAllocator(),
                 function.getParams().size(),
-                coreSize,
                 coreSize * 2
         );
-
         this.function = function;
         this.invoker = invoker;
+        updateFFIArgTypes();
 
     }
 
@@ -61,27 +62,29 @@ public class LayerCIFHandler {
                 return cifAddress;
             }
 
-            int[] argTypes = new int[function.getParams().size()];
-            for (int i = 0; i < function.getParams().size(); i++) {
-                MetaType type = function.getParams().get(i);
-                argTypes[i] = TypeUtils.getInvokerType(type).getFlag();
-            }
-
             MetaType returnType = function.getReturnType();
             int returnTypeFlag = TypeUtils.getInvokerType(returnType).getFlag();
 
-            long cifAddr = ExternalInvoker.createFFICIF(argTypes,returnTypeFlag);
+            long cifAddr = ExternalInvoker.createFFICIF(ffiArgTypes,returnTypeFlag);
             if (cifAddr == 0) {
                 throw new RuntimeException("Failed to create CIF");
             }
             this.cifAddress = cifAddr;
-            this.ffiArgTypes = argTypes;
             return cifAddr;
             
         } finally {
             lock.unlock();
         }
         
+    }
+
+    private void updateFFIArgTypes() {
+        int[] argTypes = new int[function.getParams().size()];
+        for (int i = 0; i < function.getParams().size(); i++) {
+            MetaType type = function.getParams().get(i);
+            argTypes[i] = TypeUtils.getInvokerType(type).getFlag();
+        }
+        this.ffiArgTypes = argTypes;
     }
 
     public void freeParameters(LayerBuffer buffer) {
@@ -105,6 +108,8 @@ public class LayerCIFHandler {
 
         Parameter[] parameters = method.getParameters();
         LayerBuffer buffer = bufferPool.borrow();
+        buffer.reset();
+
         long moduleAddress = invoker.getModuleAddress();
         if (moduleAddress == 0) {
             throw new RuntimeException("Module address is null");
@@ -177,6 +182,9 @@ public class LayerCIFHandler {
                 Long addr = 0L;
                 if (args[i] instanceof UniquePointer) {
                     addr = ((UniquePointer<?>)args[i]).unmanaged();
+                } else if (args[i] instanceof LayerClosure) {
+                    LayerClosure layerClosure = (LayerClosure)args[i];
+                    addr = layerClosure.getFunctionAddress();
                 } else if (args[i] instanceof OpaquePointer) {
                     addr = ((OpaquePointer)args[i]).getAddress();
                 }
@@ -255,14 +263,24 @@ public class LayerCIFHandler {
                 cifAddress,
                 result.getAddress(),
                 functionAddress,
-                params.getAddress(),
-                ffiArgTypes
+                params.getAddress()
         );
 
-        params.close();
         return result;
 
 
+    }
+
+    public LayerFunction getFunction() {
+        return function;
+    }
+
+    protected LayerInvoker getInvoker() {
+        return invoker;
+    }
+
+    protected LayerBufferPool getBufferPool() {
+        return bufferPool;
     }
 
     public void close() {

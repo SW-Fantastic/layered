@@ -5,10 +5,7 @@ import org.swdc.layered.MemoryManager;
 import org.swdc.layered.pointers.*;
 import org.swdc.layered.types.SafeLong;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 
 /**
  * 本地函数分发器，分发Native方法调用到native函数，
@@ -111,6 +108,34 @@ public class LayerInvokeHandler implements InvocationHandler {
 
                 return MemoryManager.readByte(result.getAddress(), 0);
 
+            } else if (LayerClosure.class.isAssignableFrom(returnType)) {
+
+                try {
+                    if (method.getGenericReturnType() instanceof ParameterizedType) {
+
+                        ParameterizedType intType = (ParameterizedType) method.getGenericReturnType();
+                        Class<?> closureType = (Class<?>) intType.getActualTypeArguments()[0];
+                        long address = MemoryManager.readAddress(result.getAddress(), 0);
+                        if (address == 0) {
+                            return null;
+                        }
+                        LayerClosure closure = new LayerClosure(
+                            invoker.getAllocator(),
+                            invoker,
+                            closureType,
+                            address
+                        );
+                        return closure;
+
+                    } else {
+                        throw new RuntimeException("Can not cast to LayerClosure , no parameterized type found.");
+                    }
+
+
+                } catch (Exception e) {
+
+                }
+
             } else if (OpaquePointer.class.isAssignableFrom(returnType)) {
                 try {
 
@@ -120,22 +145,14 @@ public class LayerInvokeHandler implements InvocationHandler {
                     return resultPtr;
 
                 } catch (Exception e) {
-                    throw new InvocationTargetException(e, "Can not cast to target return type " +  returnType.getName() + ", because no UniquePointer constructor found.");
+                    throw new InvocationTargetException(e, "Can not cast to target return type " + returnType.getName() + ", because no UniquePointer constructor found.");
                 }
 
             }
             return null;
 
-        } catch (Throwable throwable) {
-
-            if (result != null) {
-                result.close();
-            }
-            throw throwable;
-
         } finally {
 
-            buffer.reset();
             handler.freeParameters(buffer);
 
         }

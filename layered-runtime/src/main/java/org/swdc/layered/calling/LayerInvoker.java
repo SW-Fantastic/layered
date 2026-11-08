@@ -31,7 +31,6 @@ public class LayerInvoker {
     private Map<Method, LayerCIFHandler> handlerMap = new ConcurrentHashMap<>();
 
     private Map<Method, LayerClosureCIFHandler> callbackCIFAddressMap = new ConcurrentHashMap<>();
-    private Map<Method, List<LayerClosure<?>>> activeCallbacks = new ConcurrentHashMap<>();
 
     private ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -46,6 +45,10 @@ public class LayerInvoker {
     }
 
     public LayerCIFHandler getCIFHandler(Method method) {
+
+        if(this.moduleAddress == null) {
+            throw new IllegalStateException("Invoker has closed");
+        }
 
         return handlerMap.computeIfAbsent(method, k -> {
             LayerFunction function = lookupFunction(k);
@@ -64,20 +67,30 @@ public class LayerInvoker {
      * @return 与该方法对应的函数元数据
      * @throws IllegalArgumentException 当 method 为 null 时抛出
      * @throws RuntimeException 当方法对应的修饰名称不存在于符号表中时抛出
-     * @see #generateMangledName(Method)
+     * @see TypeUtils#generateMangledName(Method)
      */
     public LayerFunction lookupFunction(Method method) {
 
         try {
+            if(this.moduleAddress == null) {
+                throw new IllegalStateException("Invoker has closed");
+            }
+
             lock.readLock().lock();
             if (method == null) {
                 throw new IllegalArgumentException("Cannot lookup null method");
             }
 
-            String mangledName = methodSymbolMap.get(method);
-            if (mangledName == null) {
-                mangledName = generateMangledName(method);
-            }
+            String mangledName = methodSymbolMap.computeIfAbsent(method, k -> {
+                Class<?> declaringClass = k.getDeclaringClass();
+                Closure closure = declaringClass.getAnnotation(Closure.class);
+                if (closure != null) {
+                    return TypeUtils.generateCbMangledName(k);
+                } else {
+                    return TypeUtils.generateMangledName(k);
+                }
+            });
+
             if (metadata.getSymbols().containsKey(mangledName)) {
                 return metadata.getSymbols().get(mangledName);
             }
@@ -104,15 +117,26 @@ public class LayerInvoker {
 
         try {
 
+            if(this.moduleAddress == null) {
+                throw new IllegalStateException("Invoker has closed");
+            }
+
             lock.writeLock().lock();
 
             if (methodAddressMap.containsKey(method)) {
                 return methodAddressMap.get(method);
             }
 
-            long addr = lookupMethodAddress(
-                    generateMangledName(method)
-            );
+            String mangledName = null;
+            Class<?> declaringClass = method.getDeclaringClass();
+            Closure closure = declaringClass.getAnnotation(Closure.class);
+            if (closure != null) {
+                mangledName = TypeUtils.generateCbMangledName(method);
+            } else {
+                mangledName = TypeUtils.generateMangledName(method);
+            }
+
+            long addr = lookupMethodAddress(mangledName);
 
             methodAddressMap.put(method, addr);
             return addr;
@@ -138,6 +162,10 @@ public class LayerInvoker {
     public Long lookupMethodAddress(LayerFunction function) {
 
         try {
+
+            if(this.moduleAddress == null) {
+                throw new IllegalStateException("Invoker has closed");
+            }
 
             lock.readLock().lock();
             if (function == null ) {
@@ -173,6 +201,10 @@ public class LayerInvoker {
 
         try {
 
+            if(this.moduleAddress == null) {
+                throw new IllegalStateException("Invoker has closed");
+            }
+
             lock.readLock().lock();
             if (mangledName == null || mangledName.isBlank() || !metadata.getSymbols().containsKey(mangledName)) {
                 throw new RuntimeException("Cannot find method: " + mangledName);
@@ -187,30 +219,19 @@ public class LayerInvoker {
 
     }
 
-    /**
-     * 根据回调方法的签名生成对应的修饰名称（mangled name）。
-     *
-     * <p>依次解析方法的返回值类型符号与各参数类型符号，按
-     * {@code (返回类型符号)_callback_参数个数@参数类型符号1,参数类型符号2,...} 的格式拼接，
-     * 用于在模块的回调表中查找匹配的回调函数。</p>
-     *
-     * @param method 回调接口中的方法
-     * @return 该方法对应的修饰名称
-     */
-    private String generateCbMangledName(Method method) {
+    public LayerClosureCIFHandler getClosureCIFHandler(Method method) {
 
-        String returnTypeSymbol = TypeUtils.getTypeSymbol(method.getAnnotatedReturnType(), method) ;
-
-        StringJoiner joiner = new StringJoiner(",");
-        for (int index = 0; index < method.getParameterCount(); index++) {
-            Parameter parameter = method.getParameters()[index];
-            String paramTypeSymbol = TypeUtils.getTypeSymbol(parameter.getAnnotatedType(), parameter);
-            joiner.add(paramTypeSymbol);
+        if(this.moduleAddress == null) {
+            throw new IllegalStateException("Invoker has closed");
         }
 
-        return "(" + returnTypeSymbol + ")_callback_" + method.getParameterCount() + "@" + joiner;
+        return callbackCIFAddressMap.computeIfAbsent(method, k -> {
+            LayerFunction function = lookupFunction(k);
+            return new LayerClosureCIFHandler(this, function);
+        });
 
     }
+
 
     /**
      * 为指定的回调接口创建闭包实例。
@@ -235,24 +256,18 @@ public class LayerInvoker {
                 throw new RuntimeException("Module has no callbacks");
             }
 
-            for (Method method : clazz.getMethods()) {
-                String mangledName = generateCbMangledName(method);
-                if (callbacks.containsKey(mangledName)) {
-                    LayerFunction function = callbacks.get(mangledName);
-                    LayerClosureCIFHandler cifHandler = callbackCIFAddressMap.computeIfAbsent(
-                            method,
-                            m -> new LayerClosureCIFHandler(function)
-                    );
-                    LayerClosure<T> closure = new LayerClosure<>(this,method,instance,cifHandler);
-                    List<LayerClosure<?>> closures = this.activeCallbacks.computeIfAbsent(
-                            method, m -> new ArrayList<>()
-                    );
-                    closures.add(closure);
-                    return closure;
-                }
+            Closure target = clazz.getDeclaredAnnotation(Closure.class);
+            if (target == null) {
+                throw new RuntimeException("No @Closure annotation found on " + clazz.getName());
             }
 
-            throw new RuntimeException("Cannot find suitable callback method.");
+            if (target.value() == null || target.value().isBlank()) {
+                throw new RuntimeException("No method name specified for " + clazz.getName());
+            }
+
+            return getAllocator().createClosure(
+                    this, clazz, instance
+            );
 
         } finally {
             lock.readLock().unlock();
@@ -262,65 +277,6 @@ public class LayerInvoker {
 
 
    
-    /**
-     * 根据方法签名生成符合本机调用规范的修饰名称。
-     *
-     * <p>修饰名称格式为：返回类型符号 + 符号名 + @ + 参数类型符号列表</p>
-     *
-     * <p>如果方法标注了 {@link Symbol} 注解，则使用注解值作为符号名；否则使用方法名。</p>
-     *
-     * @param method 目标方法，不能为 null
-     * @return 生成的修饰名称字符串
-     */
-    public String generateMangledName(Method method) {
-
-        String returnTypeSymbol = TypeUtils.getTypeSymbol(method.getAnnotatedReturnType(), method) ;
-
-        StringJoiner joiner = new StringJoiner(",");
-        for (int index = 0; index < method.getParameterCount(); index++) {
-            Parameter parameter = method.getParameters()[index];
-            String paramTypeSymbol = TypeUtils.getTypeSymbol(parameter.getAnnotatedType(), parameter);
-            joiner.add(paramTypeSymbol);
-        }
-
-        String paramList = "@" + joiner;
-        Symbol symbol = method.getAnnotation(Symbol.class);
-        if (symbol != null) {
-            return "(" + returnTypeSymbol + ")" + symbol.value() + paramList;
-        }
-
-        Constructor ctor = method.getDeclaredAnnotation(Constructor.class);
-        if (ctor != null) {
-            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
-                    ctor.value()
-            ) + "_ctor" + paramList;
-        }
-
-        Destructor dtor = method.getDeclaredAnnotation(Destructor.class);
-        if (dtor != null) {
-            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
-                    dtor.value()
-            ) + "_dtor" + paramList;
-        }
-
-        FieldGetter getter = method.getDeclaredAnnotation(FieldGetter.class);
-        if (getter != null) {
-            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
-                    getter.type()
-            ) + "::get_" + getter.field() + paramList;
-        }
-
-        FieldSetter setter = method.getDeclaredAnnotation(FieldSetter.class);
-        if (setter != null) {
-            return "(" + returnTypeSymbol + ")" + TypeUtils.getClassSymbol(
-                    setter.type()
-            ) + "::set_" + setter.field() + paramList;
-        }
-
-        return "(" + returnTypeSymbol + ")"  + method.getName() + paramList;
-
-    }
-
     public Allocator getAllocator() {
         try {
             lock.readLock().lock();
@@ -346,30 +302,6 @@ public class LayerInvoker {
 
     }
 
-    
-    /**
-     * 注销指定方法下已注册的回调闭包。
-     *
-     * <p>该方法在读锁保护下从活跃回调表中移除给定闭包，当该方法对应的闭包列表变为空时，
-     * 一并移除其映射项，以避免残留无用的回调记录。</p>
-     *
-     * @param method 闭包所属的回调方法
-     * @param closure 待注销的回调闭包
-     */
-    void closureUnref(Method method, LayerClosure<?> closure) {
-        try {
-            lock.readLock().lock();
-            List<LayerClosure<?>> closures = activeCallbacks.get(method);
-            if (closures != null) {
-                closures.remove(closure);
-                if (closures.isEmpty()) {
-                    activeCallbacks.remove(method);
-                }
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
 
     /**
      * 关闭并释放该调用器持有的全部本地资源。
@@ -382,13 +314,6 @@ public class LayerInvoker {
 
         try {
             lock.writeLock().lock();
-
-            for (List<LayerClosure<?>> closures : activeCallbacks.values()) {
-                for (LayerClosure<?> closure : closures) {
-                    closure.close();
-                }
-            }
-            activeCallbacks.clear();
 
             for (LayerCIFHandler handler : handlerMap.values()) {
                 handler.close();

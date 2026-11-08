@@ -76,7 +76,7 @@ public class FunctionMetaType extends AbstractMetaType {
             }
         }
 
-        return returnTypeName + name + "@" + paramTypeName;
+        return returnTypeName + name + "@{" + paramTypeName + "}";
 
     }
 

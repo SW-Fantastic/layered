@@ -1,25 +1,27 @@
 package org.swdc.layered.calling;
 
-import org.swdc.layered.ExternalInvoker;
-import org.swdc.layered.LayerFunction;
-import org.swdc.layered.MemoryManager;
-import org.swdc.layered.MetaType;
+import org.swdc.layered.*;
 import org.swdc.layered.library.LayerExceptions;
 import org.swdc.layered.pointers.Allocator;
 import org.swdc.layered.pointers.OpaquePointer;
 import org.swdc.layered.pointers.PtrPointer;
 import org.swdc.layered.pointers.UniquePointer;
+import org.swdc.layered.types.Closure;
 import org.swdc.layered.types.SafeLong;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * LibFFI的Closure，C/C++对Java的回调会以这种形式进行。
  */
-public class LayerClosure<T> {
+public class LayerClosure<T> extends OpaquePointer {
 
     private T closureTarget;
 
@@ -27,43 +29,96 @@ public class LayerClosure<T> {
 
     private LayerFunction callback;
 
-    private LayerClosureCIFHandler cifHandler;
-
     private LayerInvoker invoker;
 
     private long closureAddress;
 
     private ReentrantLock lock = new ReentrantLock();
 
-    public LayerClosure(LayerInvoker invoker, Method closureMethod, T closureTarget, LayerClosureCIFHandler cifHandler) {
+    public LayerClosure(Allocator allocator, LayerInvoker invoker, Class<?> closureType, T closureTarget) {
 
-        this.invoker = invoker;
-        this.cifHandler = cifHandler;
-        this.callback = cifHandler.getCallback();
-        this.closureTarget = closureTarget;
-        this.closureMethod = closureMethod;
+        super(allocator, 0, 0, true);
+
+        LayerMetadata metadata = invoker.getMetadata();
+        Map<String, LayerFunction> symbols = metadata.getSymbols();
+
+        Closure target = closureType.getAnnotation(Closure.class);
+        if (target == null) {
+            throw new IllegalArgumentException("Class " + closureType.getName() + " is not annotated with @Closure");
+        }
+
+        for (Method method : closureType.getMethods()) {
+
+            if (!method.getName().equals(target.value())) {
+                continue;
+            }
+
+            String mangledName = TypeUtils.generateCbMangledName(method);
+            if (!metadata.getSymbols().containsKey(mangledName)) {
+                throw new RuntimeException("Method " + method.getName() + " does not matches with any callback in module , computed mangled name is " + mangledName);
+            }
+
+            LayerClosureCIFHandler cifHandler = invoker.getClosureCIFHandler(method);
+            this.invoker = invoker;
+            this.callback = symbols.get(mangledName);
+            this.closureTarget = closureTarget;
+            this.closureMethod = method;
+            this.closureAddress = ExternalInvoker.createClosure(
+                    this, cifHandler.getCifAddress()
+            );
+
+            break;
+
+        }
+
+        if (closureAddress == 0 || callback == null || closureMethod == null) {
+            close();
+        }
 
     }
 
-    public long getAddress() {
+    public LayerClosure(Allocator allocator,LayerInvoker invoker, Class<?> closureType, long handleAddress) {
 
-        if (closureAddress != 0) {
-            return closureAddress;
-        }
+        super(allocator, handleAddress, 0, false);
 
-        try {
-            lock.lock();
-            this.closureAddress = ExternalInvoker.createClosure(
-                    this,cifHandler.getCifAddress()
-            );
-            if (closureAddress == 0) {
-                throw new IllegalStateException("Failed to create closure");
+        LayerMetadata metadata = invoker.getMetadata();
+        Map<String, LayerFunction> symbols = metadata.getSymbols();
+
+        Closure target = closureType.getAnnotation(Closure.class);
+        for (Method method : closureType.getMethods()) {
+
+            if (!method.getName().equals(target.value())) {
+                continue;
             }
-            return closureAddress;
-        } finally {
-            lock.unlock();
+            String mangledName = TypeUtils.generateCbMangledName(method);
+            if (!symbols.containsKey(mangledName)) {
+                throw new RuntimeException("Method " + method.getName() + " does not matches with any callback in module , computed mangled name is " + mangledName);
+            }
+            LayerClosureCIFHandler cifHandler = invoker.getClosureCIFHandler(method);
+            this.invoker = invoker;
+            this.callback = cifHandler.getFunction();
+            this.closureMethod = method;
+            this.closureAddress = 0;
+            Object caller = Proxy.newProxyInstance(this.getClass().getClassLoader(), new Class[]{
+                    this.closureMethod.getDeclaringClass()
+            }, new LayerClosureInvokeHandler(this.invoker,this));
+
+            this.closureTarget = (T)caller;
+            break;
+
         }
 
+
+    }
+
+    @Override
+    public long getAddress() {
+        return  this.closureAddress;
+    }
+
+    @Override
+    public boolean isNull() {
+        return isOwner() && closureAddress == 0 || this.closureTarget == null;
     }
 
     /**
@@ -79,178 +134,188 @@ public class LayerClosure<T> {
      */
     private void byCall(long returnAddr, long argsAddr) {
 
-        Allocator allocator = invoker.getAllocator();
-        List<MetaType> paramTypes = callback.getParams();
-
-        Parameter[] parameters = closureMethod.getParameters();
-        Object[] args = new Object[callback.getParams().size()];
-        PtrPointer pointer = allocator.borrowPtr(argsAddr);
-
-        boolean hasError = false;
-
-        for (int index = 0; index < closureMethod.getParameterCount(); index++) {
-            OpaquePointer paramPtr = pointer.getAddress(index);
-            MetaType type = paramTypes.get(index);
-            Parameter param = parameters[index];
-            if (type == MetaType.INT) {
-
-                int value = MemoryManager.readInt(paramPtr.getAddress(), 0);
-                if (param.getType() == int.class || param.getType() == Integer.class) {
-                    args[index] = value;
-                } else if (param.getType() == long.class || param.getType() == Long.class) {
-                    args[index] = value;
-                } else if(param.getType() == boolean.class || param.getType() == Boolean.class) {
-                    args[index] = value != 0;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                }
-
-            } else if (type == MetaType.LONG) {
-
-                long value = 0L;
-                SafeLong safeLong = param.getAnnotation(SafeLong.class);
-                if (safeLong != null) {
-                    // 64位整数,long long类型
-                    value = MemoryManager.readLongLong(paramPtr.getAddress(), 0);
-                } else {
-                    value = MemoryManager.readLong(paramPtr.getAddress(), 0);
-                }
-
-                if (param.getType() == long.class || param.getType() == Long.class) {
-                    args[index] = value;
-                } else if (param.getType() == int.class || param.getType() == Integer.class) {
-                    args[index] = (int) value;
-                } else if (param.getType() == short.class || param.getType() == Short.class) {
-                    args[index] = (short) value;
-                } else if(param.getType() == boolean.class || param.getType() == Boolean.class) {
-                    args[index] = value != 0;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                    hasError = true;
-                }
-
-            } else if (type == MetaType.FLOAT) {
-
-                float value = MemoryManager.readFloat(paramPtr.getAddress(), 0);
-                if (param.getType() == float.class || param.getType() == Float.class) {
-                    args[index] = value;
-                } else if (param.getType() == double.class || param.getType() == Double.class) {
-                    args[index] = (double) value;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                    hasError = true;
-                }
-
-            } else if (type == MetaType.DOUBLE) {
-
-                double value = MemoryManager.readDouble(paramPtr.getAddress(), 0);
-                if (param.getType() == double.class || param.getType() == Double.class) {
-                    args[index] = value;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                    hasError = true;
-                }
-
-            } else if (type == MetaType.SHORT) {
-
-                short value = MemoryManager.readShort(paramPtr.getAddress(), 0);
-                if (param.getType() == short.class || param.getType() == Short.class) {
-                    args[index] = value;
-                } else if (param.getType() == int.class || param.getType() == Integer.class) {
-                    args[index] = (int) value;
-                } else if (param.getType() == long.class || param.getType() == Long.class) {
-                    args[index] = (long) value;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                    hasError = true;
-                }
-
-            } else if (type == MetaType.CHAR) {
-
-                byte value = MemoryManager.readByte(paramPtr.getAddress(), 0);
-                if (param.getType() == byte.class || param.getType() == Byte.class) {
-                    args[index] = value;
-                } else if (param.getType() == char.class || param.getType() == Character.class) {
-                    args[index] = (char) value;
-                } else if (param.getType() == int.class || param.getType() == Integer.class) {
-                    args[index] = (int) value;
-                } else if(param.getType() == boolean.class || param.getType() == Boolean.class) {
-                    args[index] = value != 0;
-                } else if (param.getType() == long.class || param.getType() == Long.class) {
-                    args[index] = (long) value;
-                } else if (param.getType() == short.class || param.getType() == Short.class) {
-                    args[index] = (short) value;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                    hasError = true;
-                }
-
-            } else if (type == MetaType.LONG_LONG) {
-
-                long value = MemoryManager.readLongLong(paramPtr.getAddress(), 0);
-                if (param.getType() == long.class || param.getType() == Long.class) {
-                    args[index] = value;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                    hasError = true;
-                }
-
-            } else if (type == MetaType.SIZE_T) {
-
-                long value = MemoryManager.readSizeT(paramPtr.getAddress(), 0);
-                if (param.getType() == long.class || param.getType() == Long.class) {
-                    args[index] = value;
-                } else {
-                    LayerExceptions.throwException(
-                            new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                    );
-                    hasError = true;
-                }
-
-            } else if (type == MetaType.INTPTR_T) {
-
-                long addr = MemoryManager.readAddress(paramPtr.getAddress(), 0);
-                if (addr == 0) {
-                    args[index] = null;
-                } else {
-                    try {
-                        OpaquePointer result = allocator.borrow(addr);
-                        PtrPointer ptrPointer = new PtrPointer(result.offset(0).move());
-                        Object resultPtr = ptrPointer.getAddress(0, param.getType());
-                        ptrPointer.close();
-                        args[index] = resultPtr;
-
-                    } catch (Exception e) {
-                        LayerExceptions.throwException(
-                                new IllegalArgumentException("Illegal type for parameter " + param.getName())
-                        );
-                        hasError = true;
-                    }
-                }
-            }
-        }
-
-        pointer.close();
-
-        if (hasError) {
+        if (!isOwner()) {
+            LayerExceptions.throwException(new IllegalStateException("closureTarget is null"));
             return;
         }
 
         try {
+
+            Allocator allocator = invoker.getAllocator();
+            List<MetaType> paramTypes = callback.getParams();
+
+            Parameter[] parameters = closureMethod.getParameters();
+            Object[] args = new Object[closureMethod.getParameterCount()];
+            PtrPointer pointer = allocator.borrowPtr(argsAddr);
+
+            List<OpaquePointer> autoPointerList = new ArrayList<>();
+
+            boolean hasError = false;
+
+            for (int index = 0; index < closureMethod.getParameterCount(); index++) {
+                OpaquePointer paramPtr = pointer.getAddress(index);
+                // meta type 0是Closure自己的地址，所以取MetaType需要跳过它。
+                MetaType type = paramTypes.get(index + 1);
+                Parameter param = parameters[index];
+                try {
+                    if (type == MetaType.INT) {
+
+                        int value = MemoryManager.readInt(paramPtr.getAddress(), 0);
+                        if (param.getType() == int.class || param.getType() == Integer.class) {
+                            args[index] = value;
+                        } else if (param.getType() == long.class || param.getType() == Long.class) {
+                            args[index] = value;
+                        } else if(param.getType() == boolean.class || param.getType() == Boolean.class) {
+                            args[index] = value != 0;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                        }
+
+                    } else if (type == MetaType.LONG) {
+
+                        long value = 0L;
+                        SafeLong safeLong = param.getAnnotation(SafeLong.class);
+                        if (safeLong != null) {
+                            // 64位整数,long long类型
+                            value = MemoryManager.readLongLong(paramPtr.getAddress(), 0);
+                        } else {
+                            value = MemoryManager.readLong(paramPtr.getAddress(), 0);
+                        }
+
+                        if (param.getType() == long.class || param.getType() == Long.class) {
+                            args[index] = value;
+                        } else if (param.getType() == int.class || param.getType() == Integer.class) {
+                            args[index] = (int) value;
+                        } else if (param.getType() == short.class || param.getType() == Short.class) {
+                            args[index] = (short) value;
+                        } else if(param.getType() == boolean.class || param.getType() == Boolean.class) {
+                            args[index] = value != 0;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                            hasError = true;
+                        }
+
+                    } else if (type == MetaType.FLOAT) {
+
+                        float value = MemoryManager.readFloat(paramPtr.getAddress(), 0);
+                        if (param.getType() == float.class || param.getType() == Float.class) {
+                            args[index] = value;
+                        } else if (param.getType() == double.class || param.getType() == Double.class) {
+                            args[index] = (double) value;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                            hasError = true;
+                        }
+
+                    } else if (type == MetaType.DOUBLE) {
+
+                        double value = MemoryManager.readDouble(paramPtr.getAddress(), 0);
+                        if (param.getType() == double.class || param.getType() == Double.class) {
+                            args[index] = value;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                            hasError = true;
+                        }
+
+                    } else if (type == MetaType.SHORT) {
+
+                        short value = MemoryManager.readShort(paramPtr.getAddress(), 0);
+                        if (param.getType() == short.class || param.getType() == Short.class) {
+                            args[index] = value;
+                        } else if (param.getType() == int.class || param.getType() == Integer.class) {
+                            args[index] = (int) value;
+                        } else if (param.getType() == long.class || param.getType() == Long.class) {
+                            args[index] = (long) value;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                            hasError = true;
+                        }
+
+                    } else if (type == MetaType.CHAR) {
+
+                        byte value = MemoryManager.readByte(paramPtr.getAddress(), 0);
+                        if (param.getType() == byte.class || param.getType() == Byte.class) {
+                            args[index] = value;
+                        } else if (param.getType() == char.class || param.getType() == Character.class) {
+                            args[index] = (char) value;
+                        } else if (param.getType() == int.class || param.getType() == Integer.class) {
+                            args[index] = (int) value;
+                        } else if(param.getType() == boolean.class || param.getType() == Boolean.class) {
+                            args[index] = value != 0;
+                        } else if (param.getType() == long.class || param.getType() == Long.class) {
+                            args[index] = (long) value;
+                        } else if (param.getType() == short.class || param.getType() == Short.class) {
+                            args[index] = (short) value;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                            hasError = true;
+                        }
+
+                    } else if (type == MetaType.LONG_LONG) {
+
+                        long value = MemoryManager.readLongLong(paramPtr.getAddress(), 0);
+                        if (param.getType() == long.class || param.getType() == Long.class) {
+                            args[index] = value;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                            hasError = true;
+                        }
+
+                    } else if (type == MetaType.SIZE_T) {
+
+                        long value = MemoryManager.readSizeT(paramPtr.getAddress(), 0);
+                        if (param.getType() == long.class || param.getType() == Long.class) {
+                            args[index] = value;
+                        } else {
+                            LayerExceptions.throwException(
+                                    new IllegalArgumentException("Illegal type for parameter " + param.getName())
+                            );
+                            hasError = true;
+                        }
+
+                    } else if (type == MetaType.INTPTR_T) {
+
+                        try {
+
+                            PtrPointer ptrPointer = new PtrPointer(paramPtr.move());
+                            args[index] = ptrPointer.getAddress(0, param.getType());
+                            ptrPointer.close();
+                            autoPointerList.add((OpaquePointer) args[index]);
+
+                        } catch (Exception e) {
+                            LayerExceptions.throwException(
+                                new InvocationTargetException(e, "Can not cast to target return type " +  param.getType().getName() + ", because no UniquePointer constructor found.")
+                            );
+                        }
+
+                    }
+                } finally {
+                    paramPtr.close();
+                }
+            }
+
+            pointer.close();
+
+            if (hasError) {
+                for (OpaquePointer autoPointer : autoPointerList) {
+                    autoPointer.close();
+                }
+                return;
+            }
 
             Class<?> closureReturnType = closureMethod.getReturnType();
             MetaType returnType = callback.getReturnType();
@@ -325,21 +390,63 @@ public class LayerClosure<T> {
                 );
             }
 
+            for (OpaquePointer autoPointer : autoPointerList) {
+                if (autoPointer == null || autoPointer.isNull()) {
+                    continue;
+                }
+                autoPointer.close();
+            }
+            autoPointerList.clear();
+
         } catch (Throwable e) {
             LayerExceptions.throwException(e);
         }
 
     }
 
-    public void close() {
-        if (closureAddress == 0) {
-            return;
+    public long getFunctionAddress() {
+        if (isOwner()) {
+            return ExternalInvoker.getClosureFunctionAddr(closureAddress);
+        } else {
+            return closureAddress;
         }
+    }
+
+    public T getCaller() {
+
+        if (this.closureTarget != null) {
+            return closureTarget;
+        } else {
+            throw new IllegalStateException("Caller is null");
+        }
+
+    }
+
+    public String getMangledName() {
+        return callback.getMangledName();
+    }
+
+    protected void doUnsafeClear() {
         try {
             lock.lock();
-            ExternalInvoker.freeClosure(closureAddress);
             closureAddress = 0;
-            invoker.closureUnref(closureMethod, this);
+            closureTarget = null;
+            closureMethod = null;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void close() {
+        try {
+
+            lock.lock();
+            if (isOwner() && closureAddress != 0) {
+                ExternalInvoker.freeClosure(closureAddress);
+                getAllocator().freeClosure(closureAddress);
+            }
+            super.close();
+
         } finally {
             lock.unlock();
         }

@@ -228,6 +228,15 @@ public class DescriptorsFactory {
             functionMeta.setParameterTypes(parameters);
             functionMeta.setCallback(functionDescriptor.isCallback());
 
+            if (functionDescriptor.isCallback()) {
+                // 在参数列表前插入一个指向函数的指针，便于Java方手动执行回调函数。
+                BuiltInMetaType base = new BuiltInMetaType(MetaType.VOID);
+                base.setName("void");
+                PointerMetaType metaType = new PointerMetaType();
+                metaType.setTargetType(base);
+                parameters.add(0, metaType);
+            }
+
             for (Map<String, FunctionMetaType> declared: this.resolvedFunction.values()) {
                 if (declared.containsKey(functionMeta.getMangledName())) {
                     FunctionMetaType exists = declared.get(functionMeta.getMangledName());

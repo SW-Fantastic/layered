@@ -1,7 +1,18 @@
 package org.swdc.layered.pointers;
 
+import org.swdc.layered.LayerFunction;
+import org.swdc.layered.LayerMetadata;
 import org.swdc.layered.MemoryManager;
+import org.swdc.layered.calling.LayerClosure;
+import org.swdc.layered.calling.LayerClosureCIFHandler;
+import org.swdc.layered.calling.LayerInvoker;
+import org.swdc.layered.calling.TypeUtils;
+import org.swdc.layered.types.Closure;
 
+import java.lang.reflect.Method;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -77,8 +88,12 @@ public class Allocator {
 
         // 始终追踪原始指针。
         try {
+
             lock.writeLock().lock();
             if (pointer.getSource() == null) {
+                if (pointer.isNull()) {
+                    return;
+                }
                 borrowedPointers.put(pointer.getAddress(), pointer);
                 return;
             }
@@ -112,6 +127,7 @@ public class Allocator {
     void unReference(OpaquePointer pointer) {
 
         try {
+
             lock.writeLock().lock();
             if (pointer.getSource() == null) {
                 borrowedPointers.remove(pointer.getAddress());
@@ -120,6 +136,7 @@ public class Allocator {
 
             OpaquePointer raw = PtrUtils.getRawPointer(pointer);
             Map<Long, OpaquePointer> map = referencedPointers.get(raw.getAddress());
+
             if (map != null) {
                 long address = pointer.getAddress();
                 pointer.unsafeClear();
@@ -203,8 +220,10 @@ public class Allocator {
             } else if (ptr.getSource() != null) {
                 OpaquePointer raw = PtrUtils.getRawPointer(ptr.getSource());
                 Map<Long, OpaquePointer> map = referencedPointers.get(raw.getAddress());
+
                 if (map != null) {
                     map.remove(ptr.getSource().getAddress());
+
                     if (map.isEmpty()) {
                         referencedPointers.remove(raw.getAddress());
                     }
@@ -216,6 +235,11 @@ public class Allocator {
     }
 
     public OpaquePointer borrow(long address) {
+
+        if (address == 0) {
+            return new OpaquePointer(this, address, 0, false);
+        }
+
         try {
             lock.readLock().lock();
             if (borrowedPointers.containsKey(address)) {
@@ -229,7 +253,52 @@ public class Allocator {
         }
     }
 
+    public <T> LayerClosure<T> createClosure(LayerInvoker invoker, Class<T> type, T instance) {
+
+        if (invoker == null) {
+            throw new IllegalArgumentException("invoker is null");
+        }
+        if (!type.isInterface()) {
+            throw new IllegalArgumentException("type is not an interface");
+        }
+
+        Closure target = type.getDeclaredAnnotation(Closure.class);
+        if (target == null) {
+            throw new RuntimeException("No @Closure annotation found on " + type.getName());
+        }
+
+        if (target.value() == null || target.value().isBlank()) {
+            throw new RuntimeException("No method name specified for " + type.getName());
+        }
+
+        LayerClosure<T> closure = new LayerClosure<>(this,invoker,type, instance);
+        if (closure.isOwner()) {
+            allocatedPointers.put(closure.getAddress(), closure);
+            return closure;
+        }
+
+        throw new RuntimeException("Cannot create closure for " + type.getName());
+
+    }
+
+    public void destroyClosure(LayerClosure<?> closure) {
+        try {
+            lock.writeLock().lock();
+            if (closure != null && allocatedPointers.containsKey(closure.getAddress())) {
+                allocatedPointers.remove(closure.getAddress());
+                closure.close();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     public PtrPointer borrowPtr(long address) {
+
+        if (address == 0) {
+            return new PtrPointer(this, address, 0, false);
+        }
+
         try {
             lock.readLock().lock();
             if (borrowedPointers.containsKey(address)) {
@@ -389,7 +458,24 @@ public class Allocator {
         allocatedPointers.put(address, pointer);
         return pointer;
     }
-    
+
+
+    public BytePointer allocateString(String str, Charset charset) {
+
+        if (str == null) {
+            return null;
+        }
+        byte[] bytes = str.getBytes(charset);
+        BytePointer pointer = allocateByte(bytes.length);
+        if (pointer == null || pointer.isNull()) {
+            return null;
+        }
+
+        pointer.setArray(0,0, bytes);
+        return pointer;
+
+    }
+
     /**
      * 分配指定容量的字节内存。
      *
@@ -467,6 +553,14 @@ public class Allocator {
         }
         allocatedPointers.remove(address);
 
+
+    }
+
+    public void freeClosure(long address) {
+        if (address == 0) {
+            return;
+        }
+        allocatedPointers.remove(address);
     }
 
     public OpaquePointer getRefManagedPointer(long address) {

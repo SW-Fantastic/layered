@@ -8,21 +8,41 @@
     [=param.castFromRawType("argV" + param?index, "arg" + param?index)]
     </#list>
 
-    <#if needResult()>
-    [=getReturnType().cppTypeFullName()] result = [=getName()](
-        <#list getParamTypes() as param>
-        argV[=param?index]<#if param_has_next>, </#if>
-        </#list>
-    );
-
-    [=getReturnType().castToRawType("resultVal", "result")]
-    return resultVal;
+    <#if isCallback()>
+        [=getFunctionMetaType().castFromRawType("self", "argV0")]
+        <#if needResult()>
+        return self(
+            <#list getCbParamTypes() as param>
+            argV[=param?index + 1]<#if param_has_next>, </#if>
+            </#list>
+        );
+        <#else>
+        self(
+            <#list getCbParamTypes() as param>
+            argV[=param?index + 1]<#if param_has_next>, </#if>
+            </#list>
+        );
+        </#if>
     <#else>
-    [=getName()](
-        <#list getParamTypes() as param>
-        argV[=param?index]<#if param_has_next>, </#if>
-        </#list>
-    );
+
+        <#if needResult()>
+        [=getReturnType().cppTypeFullName()] result = [=getName()](
+            <#list getParamTypes() as param>
+            argV[=param?index]<#if param_has_next>, </#if>
+            </#list>
+        );
+
+        [=getReturnType().castToRawType("resultVal", "result")]
+        return resultVal;
+        <#else>
+        [=getName()](
+            <#list getParamTypes() as param>
+            argV[=param?index]<#if param_has_next>, </#if>
+            </#list>
+        );
+        </#if>
+
     </#if>
+
 
 }

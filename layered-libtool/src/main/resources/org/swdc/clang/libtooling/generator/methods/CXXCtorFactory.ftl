@@ -7,7 +7,7 @@
     <#list getParamTypes() as param>
     [=param.castFromRawType("argV" + param?index, "arg" + param?index)]
     </#list>
-    [=getReturnType().cppTypeFullName()]* result = new [=getReturnType().cppTypeFullName()](
+    [=getReturnType().cppTypeFullName()] result = new [=getReturnType().getTargetType().cppTypeFullName()](
         <#list getParamTypes() as param>
         argV[=param?index]<#if param_has_next>, </#if>
         </#list>

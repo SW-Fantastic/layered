@@ -72,7 +72,7 @@ public class PtrPointer<T extends OpaquePointer> extends SeekablePointer {
             if (type.isAssignableFrom(pointer.getClass())) {
                 return (R)pointer;
             }
-            throw new RuntimeException("pointer type mismatch, pointer should be " + pointer.getClass().getName());
+            throw new RuntimeException("pointer type mismatch, type of " + Long.toHexString(address) + " should be " + pointer.getClass().getName());
 
         }
         pointer = new OpaquePointer(getAllocator(), address, -1, false);
@@ -124,7 +124,10 @@ public class PtrPointer<T extends OpaquePointer> extends SeekablePointer {
             Type fieldGenericType = field.getGenericType();
             if (fieldGenericType instanceof ParameterizedType) {
                 ParameterizedType parameterizedType = (ParameterizedType) fieldGenericType;
-                type = (Class<T>) parameterizedType.getActualTypeArguments()[0];
+                Type actualType = parameterizedType.getActualTypeArguments()[0];
+                if (actualType instanceof Class) {
+                    type = (Class<T>)actualType;
+                }
             }
             return type;
         } catch (NoSuchFieldException e) {

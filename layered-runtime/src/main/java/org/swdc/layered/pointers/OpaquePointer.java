@@ -95,7 +95,7 @@ public class OpaquePointer {
     public boolean isNull() {
         try {
             lock.readLock().lock();
-            return address == 0;
+            return getAddress() == 0;
         } finally {
             lock.readLock().unlock();
         }
@@ -137,15 +137,23 @@ public class OpaquePointer {
      */
     void unsafeClear() {
         try {
+
             lock.writeLock().lock();
+            doUnsafeClear();
+
             this.address = 0;
             this.owner = false;
             this.allocator = null;
             this.alignment = 0;
             this.source = null;
+
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    protected void doUnsafeClear() {
+
     }
 
     /**
@@ -163,10 +171,10 @@ public class OpaquePointer {
                 return;
             }
 
-            if (source != null) {
+            if (!owner) {
                 this.allocator.unReference(this);
                 return;
-            } else if (owner) {
+            } else {
                 if (allocator.getReferenceCount(this) > 0) {
                     throw new IllegalStateException("There is still references to this pointer");
                 }
@@ -199,10 +207,10 @@ public class OpaquePointer {
 
             lock.writeLock().lock();
 
-            long address = this.address;
-            int alignment = this.alignment;
-            boolean owner = this.owner;
-            Allocator allocator = this.allocator;
+            long address = this.getAddress();
+            int alignment = this.getAlignment();
+            boolean owner = this.isOwner();
+            Allocator allocator = this.getAllocator();
             UniquePointer ptr = new UniquePointer<>(this.getClass(), allocator, this, () -> {
 
                 if (owner) {

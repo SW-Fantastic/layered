@@ -152,7 +152,7 @@ public class LayerModule {
      * @param moduleName 模块名称
      * @return 该模块对应的调用器实例
      */
-    private LayerInvoker getInvoker(String moduleName) {
+    public LayerInvoker getInvoker(String moduleName) {
 
         try {
             lock.lock();

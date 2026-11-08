@@ -19,7 +19,7 @@ public class ExternalInvoker {
 
     public static native void destroyFFICIF(long cifAddress);
 
-    public static native void call(long cifAddress, long resultAddr, long functionAddr, long addrOfArgs, int[] argTypes);
+    public static native void call(long cifAddress, long resultAddr, long functionAddr, long addrOfArgs);
 
     public static native long createClosure(Object callback, long cifAddress);
 

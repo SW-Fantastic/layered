@@ -113,7 +113,7 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_destroyFFICIF
  * Signature: (JJJJ[I)V
  */
 JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
-(JNIEnv*, jclass, jlong, jlong, jlong, jlong, jintArray);
+(JNIEnv*, jclass, jlong, jlong, jlong, jlong);
 
 
 /*

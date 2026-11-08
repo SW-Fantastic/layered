@@ -439,12 +439,6 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
 
             for (FunctionMetaType metaType : descriptorsFactory.getFunctions(header)) {
 
-                if (metaType.isCallback()) {
-                    WritableFunction callback = createFunctionMetadata(metaType, prefix, null);
-                    metadata.addCallback(callback);
-                    continue;
-                }
-
                 try {
 
                     int index = generatedIndex.getAndIncrement();
@@ -531,7 +525,7 @@ public class CXXWrapSourceGenerator extends AbstractSourceGenerator{
 
         String targetName = null;
         if (functionIndex != null) {
-            targetName = prefix + functionIndex;
+            targetName = prefix + "_" + functionIndex;
         } else {
             targetName = prefix;
         }

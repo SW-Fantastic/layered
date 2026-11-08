@@ -47,4 +47,13 @@ public class RenderableFunction {
     public FunctionMetaType getFunctionMetaType() {
         return functionMetaType;
     }
+
+    public boolean isCallback() {
+        return functionMetaType.isCallback();
+    }
+
+    public List<AbstractMetaType> getCbParamTypes() {
+        return functionMetaType.getParameterTypes().subList(1, functionMetaType.getParameterTypes().size());
+    }
+
 }

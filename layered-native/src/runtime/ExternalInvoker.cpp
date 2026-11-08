@@ -346,14 +346,13 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_destroyFFICIF
  * Signature: (JJJJ[I)V
  */
 JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
-(JNIEnv* env, jclass, jlong cifAddr, jlong resultAddr, jlong functionAddr, jlong paramsAddr, jintArray layerFlags) {
+(JNIEnv* env, jclass, jlong cifAddr, jlong resultAddr, jlong functionAddr, jlong paramsAddr) {
 
 	if (cifAddr == NULL || functionAddr == NULL || resultAddr == NULL) {
 		return;
 	}
 
 
-	jint* argTypes = env->GetIntArrayElements(layerFlags, 0);
 	void** realParams = reinterpret_cast<void**>(paramsAddr);
 	
 	LayerCall* call = reinterpret_cast<LayerCall*>(cifAddr);
@@ -362,7 +361,6 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 	void* functionPtr = reinterpret_cast<void*>(functionAddr);
 	void* result = reinterpret_cast<void*>(resultAddr);
 	ffi_call(cifPtr, FFI_FN(functionPtr), result, realParams);
-	env->ReleaseIntArrayElements(layerFlags, argTypes, 0);
 
 
 }
@@ -370,14 +368,21 @@ JNIEXPORT void JNICALL Java_org_swdc_layered_ExternalInvoker_call
 void closureCall(ffi_cif* cif, void* ret, void** args, void* user_data) {
 
 	JNIEnv* env = NULL;
-	javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
-	jboolean attached = 0;
-	if (env == NULL) {
-		attached = javaVM->AttachCurrentThread((void**)&env, NULL);
+	int status = javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+	bool attached = 0;
+	if (status == JNI_EDETACHED) {
+		if (javaVM->AttachCurrentThread((void**)&env, NULL) != JNI_OK) {
+			return;
+		}
+		attached = true;
 	}
 
 	if (env) {
 		env->CallVoidMethod((jobject)user_data, closureMethod, reinterpret_cast<intptr_t>(ret), reinterpret_cast<intptr_t>(args));
+		if (env->ExceptionCheck()) {
+			env->ExceptionDescribe(); // ´òÓ¡Òì³£Õ»
+			env->ExceptionClear();
+		}
 	}
 
 	if (attached) {

@@ -93,7 +93,9 @@ public class MetaTypeUtils {
 
         List<AbstractMetaType> parameterTypes = type.getParameterTypes();
         StringBuilder paramBuilder = new StringBuilder();
-        for (int index = 0; index < parameterTypes.size(); index++) {
+        // callback的第一个参数是指向自身的指针，不要转换它。
+        int startIndex = type.isCallback() ? 1 : 0;
+        for (int index = startIndex; index < parameterTypes.size(); index++) {
 
             AbstractMetaType paramType = parameterTypes.get(index);
             String rawModifier = "";
